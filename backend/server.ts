@@ -1,0 +1,137 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
+import { sequelize } from './src/models/index.js';
+import { logger } from './src/utils/logger.js';
+import authRoutes from './src/routes/auth.routes.js';
+import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
+import { apiLimiter } from './src/middleware/rateLimiter.js';
+
+dotenv.config();
+
+const app = express();
+const PORT = parseInt(process.env.PORT || '3000', 10);
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for development, configure for production
+}));
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Body parsing
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging middleware
+app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const start = Date.now();
+  
+  // Log response when finished
+  res.on('finish', async () => {
+    const duration = Date.now() - start;
+    
+    // Only log if not a health check
+    if (req.path !== '/health') {
+      await logger.info('HTTP Request', {
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        duration,
+        userId: req.dbUser?.id,
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+    }
+  });
+  
+  next();
+});
+
+// Rate limiting for API routes
+app.use('/api', apiLimiter);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV,
+    });
+});
+
+// API routes
+app.use('/api/auth', authRoutes);
+
+// 404 handler
+app.use(notFoundHandler);
+
+// Global error handler
+app.use(errorHandler);
+
+/**
+ * Start server and initialize database
+ */
+async function startServer() {
+    try {
+        // Test database connection
+        await sequelize.authenticate();
+        console.log('✅ Database connected successfully');
+        await logger.info('Database connected', {
+            database: process.env.DB_NAME,
+        });
+
+        // Sync models in development
+        if (process.env.NODE_ENV === 'development') {
+            await sequelize.sync();
+            console.log('✅ Database models synchronized');
+            await logger.info('Database models synchronized');
+        }
+
+        // Start HTTP server
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running on http://localhost:${PORT}`);
+            console.log(`📝 Environment: ${process.env.NODE_ENV}`);
+            console.log(`🔐 Logto endpoint: ${process.env.LOGTO_ENDPOINT}`);
+            console.log(`📊 Axiom dataset: ${process.env.AXIOM_DATASET}`);
+
+            logger.info('Server started', {
+                port: PORT,
+                environment: process.env.NODE_ENV,
+            });
+        });
+    } catch (error: any) {
+        console.error('❌ Failed to start server:', error);
+        await logger.error('Server startup failed', {
+            error: error.message,
+            stack: error.stack,
+        });
+        process.exit(1);
+    }
+}
+
+// Handle graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    await logger.info('Server shutting down');
+    await sequelize.close();
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    console.log('\nSIGINT received, shutting down gracefully...');
+    await logger.info('Server shutting down');
+    await sequelize.close();
+    process.exit(0);
+});
+
+startServer();
+
+export default app;
