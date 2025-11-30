@@ -20,11 +20,9 @@ const logtoConfig = {
  * Wraps app with necessary providers
  */
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <LogtoProvider config={logtoConfig}>
-        <App />
-      </LogtoProvider>
-    </BrowserRouter>
-  </React.StrictMode>
+  <BrowserRouter>
+    <LogtoProvider config={logtoConfig}>
+      <App />
+    </LogtoProvider>
+  </BrowserRouter>
 );

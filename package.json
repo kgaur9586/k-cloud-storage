@@ -1,5 +1,35 @@
 {
-  "dependencies": {
-    "@logto/express": "^3.0.11"
+  "name": "k-cloud-storage",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal cloud storage with AI features - Monorepo",
+  "scripts": {
+    "test": "jest",
+    "dev": "pnpm --parallel run dev",
+    "dev:backend": "pnpm --filter @k-cloud/backend dev",
+    "dev:frontend": "pnpm --filter @k-cloud/frontend dev",
+    "build": "pnpm --filter @k-cloud/shared build && pnpm --filter @k-cloud/backend build && pnpm --filter @k-cloud/frontend build",
+    "build:backend": "pnpm --filter @k-cloud/backend build",
+    "build:frontend": "pnpm --filter @k-cloud/frontend build",
+    "build:shared": "pnpm --filter @k-cloud/shared build",
+    "clean": "pnpm -r exec rm -rf node_modules dist",
+    "install:all": "pnpm install",
+    "db:sync": "pnpm --filter @k-cloud/backend db:sync",
+    "type-check": "pnpm -r run type-check"
+  },
+  "keywords": [
+    "monorepo",
+    "cloud-storage",
+    "typescript",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
   }
 }

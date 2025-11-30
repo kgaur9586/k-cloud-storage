@@ -3,8 +3,19 @@
         "target": "ES2022",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
-        "rootDir": ".",
         "outDir": "./dist",
+        "baseUrl": ".",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ],
+            "@k-cloud/shared": [
+                "../shared/src/index.ts"
+            ],
+            "@k-cloud/shared/*": [
+                "../shared/src/*"
+            ]
+        },
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "strict": true,
@@ -16,6 +27,7 @@
         "server.ts"
     ],
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "dist"
     ]
 }

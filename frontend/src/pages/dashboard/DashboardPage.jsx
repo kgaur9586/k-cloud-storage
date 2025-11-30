@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Box,
     Container,
@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import { UserProfile } from '../../components/auth/UserProfile';
 import { LogoutButton } from '../../components/auth/LogoutButton';
+import { UserProfileModal } from '../../components/auth/UserProfileModal';
 import authService from '../../services/authService';
 import { toast } from 'react-toastify';
 import CloudIcon from '@mui/icons-material/Cloud';
@@ -25,9 +26,18 @@ export function DashboardPage() {
     const [user, setUser] = useState(null);
     const [storageStats, setStorageStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showProfileModal, setShowProfileModal] = useState(false);
+    const [partialUser, setPartialUser] = useState(null);
+
+    const effectRan = useRef(false);
 
     useEffect(() => {
-        loadUserData();
+        if (effectRan.current === false) {
+            loadUserData();
+            return () => {
+                effectRan.current = true;
+            };
+        }
     }, []);
 
     const loadUserData = async () => {
@@ -39,10 +49,31 @@ export function DashboardPage() {
             setUser(userData);
             setStorageStats(storage);
         } catch (error) {
-            console.error('Failed to load user data:', error);
-            toast.error('Failed to load user data');
+            // Handle 404 - user authenticated but not in database
+            if (error.response?.status === 404) {
+                console.log('User not found in database, showing profile modal');
+                setPartialUser(error.response.data.data || error.response.data);
+                setShowProfileModal(true);
+            } else {
+                console.error('Failed to load user data:', error);
+                toast.error('Failed to load user data');
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleProfileSubmit = async (formData) => {
+        try {
+            await authService.createUser(formData);
+            toast.success('Profile created successfully!');
+            setShowProfileModal(false);
+            setLoading(true);
+            await loadUserData();
+        } catch (error) {
+            console.error('Failed to create profile:', error);
+            toast.error(error.response?.data?.message || 'Failed to create profile');
+            throw error;
         }
     };
 
@@ -161,6 +192,13 @@ export function DashboardPage() {
                     </Typography>
                 </Paper>
             </Box>
+
+            {/* Profile Creation Modal */}
+            <UserProfileModal
+                open={showProfileModal}
+                email={partialUser?.email}
+                onSubmit={handleProfileSubmit}
+            />
         </Container>
     );
 }

@@ -7,6 +7,7 @@ import { logger } from './src/utils/logger.js';
 import authRoutes from './src/routes/auth.routes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { apiLimiter } from './src/middleware/rateLimiter.js';
+import { setupSwagger } from './src/config/swagger.js';
 
 dotenv.config();
 
@@ -20,7 +21,11 @@ app.use(helmet({
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:5173',
+    'http://localhost:5174'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -67,6 +72,9 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Swagger API Documentation
+setupSwagger(app);
+
 // API routes
 app.use('/api/auth', authRoutes);
 
@@ -99,6 +107,7 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log(`🚀 Server running on http://localhost:${PORT}`);
             console.log(`📝 Environment: ${process.env.NODE_ENV}`);
+            console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
             console.log(`🔐 Logto endpoint: ${process.env.LOGTO_ENDPOINT}`);
             console.log(`📊 Axiom dataset: ${process.env.AXIOM_DATASET}`);
 
