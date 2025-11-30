@@ -78,12 +78,13 @@ function App() {
 
   // Restore access token on app load/refresh
   useEffect(() => {
+    // Only initialize once
+    if (authInitialized.current) return;
+
     const initAuth = async () => {
       // Wait for Logto to finish loading
       if (isLogtoLoading) return;
 
-      // Prevent duplicate initialization
-      if (authInitialized.current) return;
       authInitialized.current = true;
 
       if (isAuthenticated) {
@@ -96,11 +97,15 @@ function App() {
         } catch (error) {
           console.error('Failed to restore access token', error);
         }
+      } else {
+        // Clear token if not authenticated
+        setAccessToken(null);
       }
       setIsReady(true);
     };
 
     initAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, isLogtoLoading]);
 
   if (!isReady) {

@@ -2,9 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import { sequelize } from './src/models/index.js';
+import { sequelize, setupAssociations } from './src/models/index.js';
 import { logger } from './src/utils/logger.js';
 import authRoutes from './src/routes/auth.routes.js';
+import fileRoutes from './src/routes/file.routes.js';
+import folderRoutes from './src/routes/folder.routes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { apiLimiter } from './src/middleware/rateLimiter.js';
 import { setupSwagger } from './src/config/swagger.js';
@@ -77,6 +79,8 @@ setupSwagger(app);
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/folders', folderRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -95,6 +99,10 @@ async function startServer() {
         await logger.info('Database connected', {
             database: process.env.DB_NAME,
         });
+
+        // Setup model associations
+        setupAssociations();
+        console.log('✅ Model associations configured');
 
         // Sync models in development
         if (process.env.NODE_ENV === 'development') {

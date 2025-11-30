@@ -83,10 +83,10 @@ export function mockDbUser(user: any) {
 /**
  * Create a mock Express app for testing
  */
-export function createTestApp(routes: any): Express {
+export function createTestApp(routes: any, mountPath: string = '/api/auth'): Express {
   const app = express();
   app.use(express.json());
-  app.use('/api/auth', routes);
+  app.use(mountPath, routes);
   return app;
 }
 

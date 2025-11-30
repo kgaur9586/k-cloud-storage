@@ -1,5 +1,7 @@
 import sequelize from '../config/database.js';
 import User from './User.js';
+import File from './File.js';
+import Folder from './Folder.js';
 
 /**
  * Models registry
@@ -7,15 +9,28 @@ import User from './User.js';
  */
 const models = {
     User,
+    File,
+    Folder,
 };
 
 /**
- * Define model associations here
- * Example: User.hasMany(File);
- * Example: File.belongsTo(User);
+ * Define model associations
+ * Sets up relationships between models
  */
 export const setupAssociations = () => {
-    // Will add associations as we create more models
+    // User associations
+    User.hasMany(File, { foreignKey: 'userId', as: 'files' });
+    User.hasMany(Folder, { foreignKey: 'userId', as: 'folders' });
+
+    // File associations
+    File.belongsTo(User, { foreignKey: 'userId', as: 'owner' });
+    File.belongsTo(Folder, { foreignKey: 'folderId', as: 'folder' });
+
+    // Folder associations
+    Folder.belongsTo(User, { foreignKey: 'userId', as: 'owner' });
+    Folder.belongsTo(Folder, { foreignKey: 'parentId', as: 'parent' });
+    Folder.hasMany(Folder, { foreignKey: 'parentId', as: 'children' });
+    Folder.hasMany(File, { foreignKey: 'folderId', as: 'files' });
 };
 
 export { sequelize, models };

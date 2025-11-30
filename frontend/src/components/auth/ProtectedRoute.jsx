@@ -9,6 +9,8 @@ import { CircularProgress, Box } from '@mui/material';
 export function ProtectedRoute({ children }) {
     const { isAuthenticated, isLoading } = useLogto();
 
+    console.log('ProtectedRoute render:', { isAuthenticated, isLoading });
+
     if (isLoading) {
         return (
             <Box

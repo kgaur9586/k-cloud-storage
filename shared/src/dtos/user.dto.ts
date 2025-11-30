@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Gender } from '../types';
+import { Gender } from '../types/index.js';
 
 /**
  * User DTOs (Data Transfer Objects)
