@@ -4,6 +4,7 @@
   "private": true,
   "description": "Personal cloud storage with AI features - Monorepo",
   "scripts": {
+    "test": "jest",
     "dev": "pnpm --parallel run dev",
     "dev:backend": "pnpm --filter @k-cloud/backend dev",
     "dev:frontend": "pnpm --filter @k-cloud/frontend dev",

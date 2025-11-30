@@ -5,11 +5,11 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   declare id: CreationOptional<string>;
   declare logtoUserId: string;
   declare email: string;
-  declare name: CreationOptional<string>;
-  declare phone: CreationOptional<string>;
-  declare age: CreationOptional<number>;
-  declare gender: CreationOptional<'male' | 'female' | 'other' | 'prefer_not_to_say'>;
-  declare picture: CreationOptional<string>;
+  declare name: CreationOptional<string | null>;
+  declare phone: CreationOptional<string | null>;
+  declare age: CreationOptional<number | null>;
+  declare gender: CreationOptional<'male' | 'female' | 'other' | 'prefer_not_to_say' | null>;
+  declare picture: CreationOptional<string | null>;
   declare storageQuota: CreationOptional<number>;
   declare storageUsed: CreationOptional<number>;
   declare role: CreationOptional<'user' | 'admin'>;
@@ -24,7 +24,7 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
     return (Number(this.storageUsed) + requiredBytes) <= Number(this.storageQuota);
   }
 
-  toJSON() {
+  toJSON(): any {
     const values = { ...this.get() };
     // Cast BIGINT to Number
     if (values.storageQuota) values.storageQuota = Number(values.storageQuota);
