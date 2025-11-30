@@ -1,11 +1,14 @@
+import { useEffect, useState, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, Box, CircularProgress } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
+import { useLogto } from '@logto/react';
 import 'react-toastify/dist/ReactToastify.css';
 import { LoginPage } from './pages/auth/LoginPage';
 import { CallbackPage } from './pages/auth/CallbackPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { setAccessToken } from './services/api';
 
 /**
  * Material-UI theme configuration
@@ -69,6 +72,45 @@ const theme = createTheme({
  * Handles routing and theme
  */
 function App() {
+  const { isAuthenticated, isLoading: isLogtoLoading, getAccessToken } = useLogto();
+  const [isReady, setIsReady] = useState(false);
+  const authInitialized = useRef(false);
+
+  // Restore access token on app load/refresh
+  useEffect(() => {
+    const initAuth = async () => {
+      // Wait for Logto to finish loading
+      if (isLogtoLoading) return;
+
+      // Prevent duplicate initialization
+      if (authInitialized.current) return;
+      authInitialized.current = true;
+
+      if (isAuthenticated) {
+        try {
+          const token = await getAccessToken();
+          if (token) {
+            setAccessToken(token);
+            console.log('Access token restored on app load');
+          }
+        } catch (error) {
+          console.error('Failed to restore access token', error);
+        }
+      }
+      setIsReady(true);
+    };
+
+    initAuth();
+  }, [isAuthenticated, isLogtoLoading]);
+
+  if (!isReady) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />

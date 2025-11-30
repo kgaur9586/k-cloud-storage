@@ -1,7 +1,9 @@
 import express from 'express';
-import { requireAuth, requireDbUser } from '../middleware/logto.js';
-import { getUser, createUser, updateProfile, getStorageStats } from '../controllers/authController.js';
-import { asyncHandler } from '../middleware/errorHandler.js';
+import { requireAuth, requireDbUser } from '@/middleware/logto.js';
+import { getUser, createUser, updateUser, getStorageStats } from '@/controllers/authController.js';
+import { asyncHandler } from '@/middleware/errorHandler.js';
+import { validateBody } from '@/middleware/validation.js';
+import { CreateUserRequestSchema, UpdateUserRequestSchema } from '@k-cloud/shared';
 
 const router = express.Router();
 
@@ -19,14 +21,25 @@ router.get('/user', requireAuth, asyncHandler(getUser));
  * @route POST /api/auth/user
  * @access Private (Logto authenticated only)
  */
-router.post('/user', requireAuth, asyncHandler(createUser));
+router.post(
+  '/user',
+  requireAuth,
+  validateBody(CreateUserRequestSchema),
+  asyncHandler(createUser)
+);
 
 /**
  * Update user profile
  * @route PUT /api/auth/user
  * @access Private (requires existing user in database)
  */
-router.put('/user', requireAuth, requireDbUser, asyncHandler(updateProfile));
+router.put(
+  '/user',
+  requireAuth,
+  requireDbUser,
+  validateBody(UpdateUserRequestSchema),
+  asyncHandler(updateUser)
+);
 
 /**
  * Get storage statistics

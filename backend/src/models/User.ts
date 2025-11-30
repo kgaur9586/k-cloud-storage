@@ -23,6 +23,19 @@ class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   public hasAvailableStorage(requiredBytes: number): boolean {
     return (Number(this.storageUsed) + requiredBytes) <= Number(this.storageQuota);
   }
+
+  toJSON() {
+    const values = { ...this.get() };
+    // Cast BIGINT to Number
+    if (values.storageQuota) values.storageQuota = Number(values.storageQuota);
+    if (values.storageUsed !== undefined) values.storageUsed = Number(values.storageUsed);
+    
+    // Convert Dates to ISO strings
+    if (values.createdAt instanceof Date) values.createdAt = values.createdAt.toISOString() as any;
+    if (values.updatedAt instanceof Date) values.updatedAt = values.updatedAt.toISOString() as any;
+    
+    return values;
+  }
 }
 
 User.init({

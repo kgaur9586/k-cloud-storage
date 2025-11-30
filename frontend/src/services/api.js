@@ -31,6 +31,10 @@ export const setAccessToken = (token) => {
 api.interceptors.response.use(
     (response) => {
         console.log('API Response:', response.config.url, response.status);
+        // Unwrap standardized ApiResponse
+        if (response.data && response.data.status === 'success' && response.data.data) {
+            return { ...response, data: response.data.data };
+        }
         return response;
     },
     (error) => {

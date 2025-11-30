@@ -20,7 +20,9 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify token with Logto introspection endpoint
+    // Skip introspection and validate via UserInfo endpoint directly
+    // This avoids issues with Client ID/Secret mismatch for SPA apps
+    /*
     const introspectionResponse = await fetch(`${process.env.LOGTO_ENDPOINT}oidc/token/introspection`, {
       method: 'POST',
       headers: {
@@ -34,16 +36,16 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     });
 
     const tokenData = await introspectionResponse.json();
-    console.log('Token introspection response:', tokenData);
-
+    
     if (!tokenData.active) {
       return res.status(401).json({ 
         error: 'Unauthorized',
         message: 'Invalid or expired token' 
       });
     }
+    */
 
-    // Get user info from userinfo endpoint (contains more details)
+    // Get user info from userinfo endpoint (validates token implicitly)
     const userinfoResponse = await fetch(`${process.env.LOGTO_ENDPOINT}oidc/me`, {
       method: 'GET',
       headers: {
@@ -51,15 +53,22 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       },
     });
 
-    const userInfo = await userinfoResponse.json();
-    console.log('User info response:', userInfo);
+    if (!userinfoResponse.ok) {
+       return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Invalid or expired token' 
+      });
+    }
 
-    // Extract user claims (prefer userinfo, fallback to token data)
-    const sub = userInfo.sub || tokenData.sub;
-    const email = userInfo.email || tokenData.email || null;
+    const userInfo = await userinfoResponse.json();
+    // console.log('User info response:', userInfo);
+
+    // Extract user claims
+    const sub = userInfo.sub;
+    const email = userInfo.email || null;
 
     if (!sub) {
-      console.error('Missing required claims:', { sub, email, userInfo, tokenData });
+      console.error('Missing required claims:', { sub, email, userInfo });
       return res.status(400).json({
         error: 'Invalid authentication',
         message: 'User identity not found'
@@ -69,8 +78,8 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     req.logtoUser = {
       sub: sub,
       email: email,
-      name: userInfo.name || tokenData.name || null,
-      picture: userInfo.picture || tokenData.picture || null,
+      name: userInfo.name || null,
+      picture: userInfo.picture || null,
     };
 
     await logger.debug('Token validated', {
