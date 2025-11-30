@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Container, Paper, CircularProgress } from '@mui/material';
 import { toast } from 'react-toastify';
 import fileService from '../../services/fileService';
@@ -8,6 +8,7 @@ import Breadcrumb from './Breadcrumb';
 import FolderTree from './FolderTree';
 import FileList from './FileList';
 import FileUploadZone from './FileUploadZone';
+import FilePreviewModal from './FilePreviewModal';
 
 /**
  * FileManager Component
@@ -26,6 +27,8 @@ export default function FileManager() {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [breadcrumbPath, setBreadcrumbPath] = useState([]);
+    const [previewFile, setPreviewFile] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const initialLoadDone = useRef(false);
 
     // Load initial data - runs only once on mount
@@ -62,7 +65,7 @@ export default function FileManager() {
         loadInitialData();
     }, []);
 
-    // Reload data when folder/sort changes
+    // Reload data when folder/sort/search changes
     useEffect(() => {
         if (!initialLoadDone.current) return; // Skip on initial mount
 
@@ -70,15 +73,15 @@ export default function FileManager() {
             try {
                 setLoading(true);
                 const [filesData, foldersData] = await Promise.all([
-                    fileService.listFiles(currentFolderId, { sortBy, sortOrder }),
-                    folderService.listFolders(currentFolderId),
+                    fileService.listFiles(currentFolderId, { sortBy, sortOrder, search: searchQuery }),
+                    folderService.listFolders(currentFolderId, searchQuery),
                 ]);
 
                 setFiles(filesData.files || []);
                 setFolders(foldersData.folders || []);
 
                 // Build breadcrumb
-                if (currentFolderId) {
+                if (currentFolderId && !searchQuery) {
                     try {
                         const folderData = await folderService.getFolder(currentFolderId);
                         const folder = folderData;
@@ -91,6 +94,8 @@ export default function FileManager() {
                     } catch (error) {
                         console.error('Failed to build breadcrumb:', error);
                     }
+                } else if (searchQuery) {
+                    setBreadcrumbPath([{ name: 'Search Results', path: null }]);
                 } else {
                     setBreadcrumbPath([]);
                 }
@@ -102,16 +107,21 @@ export default function FileManager() {
             }
         };
 
-        reloadData();
-    }, [currentFolderId, sortBy, sortOrder]);
+        // Debounce search
+        const timeoutId = setTimeout(() => {
+            reloadData();
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+    }, [currentFolderId, sortBy, sortOrder, searchQuery]);
 
     // Helper function to reload data (for use in handlers)
     const reloadCurrentData = async () => {
         try {
             setLoading(true);
             const [filesData, foldersData] = await Promise.all([
-                fileService.listFiles(currentFolderId, { sortBy, sortOrder }),
-                folderService.listFolders(currentFolderId),
+                fileService.listFiles(currentFolderId, { sortBy, sortOrder, search: searchQuery }),
+                folderService.listFolders(currentFolderId, searchQuery),
             ]);
             setFiles(filesData.files || []);
             setFolders(foldersData.folders || []);
@@ -163,6 +173,7 @@ export default function FileManager() {
     const handleNavigate = (folderId) => {
         setCurrentFolderId(folderId);
         setSelectedItems([]);
+        setSearchQuery(''); // Clear search on navigation
     };
 
     /**
@@ -249,6 +260,24 @@ export default function FileManager() {
         }
     };
 
+    /**
+     * Handle file preview
+     */
+    const handlePreview = (file) => {
+        setPreviewFile(file);
+    };
+
+    const handleClosePreview = () => {
+        setPreviewFile(null);
+    };
+
+    /**
+     * Handle search
+     */
+    const handleSearch = (query) => {
+        setSearchQuery(query);
+    };
+
     return (
         <Container maxWidth="xl" sx={{ py: 3 }}>
             <Paper elevation={2} sx={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
@@ -265,6 +294,7 @@ export default function FileManager() {
                     onCreateFolder={handleCreateFolder}
                     selectedCount={selectedItems.length}
                     onSelectAll={handleSelectAll}
+                    onSearch={handleSearch}
                 />
 
                 {/* Breadcrumb */}
@@ -317,12 +347,20 @@ export default function FileManager() {
                                     onNavigate={handleNavigate}
                                     onDelete={handleDelete}
                                     onRename={handleRename}
+                                    onPreview={handlePreview}
                                 />
                             </>
                         )}
                     </Box>
                 </Box>
             </Paper>
+
+            {/* Preview Modal */}
+            <FilePreviewModal
+                file={previewFile}
+                open={Boolean(previewFile)}
+                onClose={handleClosePreview}
+            />
         </Container>
     );
 }

@@ -16,6 +16,7 @@ export default function FileList({
     onNavigate,
     onDelete,
     onRename,
+    onPreview,
 }) {
     const hasItems = files.length > 0 || folders.length > 0;
 
@@ -70,6 +71,7 @@ export default function FileList({
                             onSelect={() => onSelect(file, 'file')}
                             onDelete={() => onDelete(file, 'file')}
                             onRename={(newName) => onRename(file, 'file', newName)}
+                            onPreview={() => onPreview(file)}
                         />
                     </Grid>
                 ))}
@@ -104,6 +106,7 @@ export default function FileList({
                     onSelect={() => onSelect(file, 'file')}
                     onDelete={() => onDelete(file, 'file')}
                     onRename={(newName) => onRename(file, 'file', newName)}
+                    onPreview={() => onPreview(file)}
                 />
             ))}
         </Box>

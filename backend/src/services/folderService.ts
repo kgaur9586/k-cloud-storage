@@ -57,15 +57,23 @@ class FolderService {
   }
 
   /**
-   * List folders in a parent folder
+   * List folders in a parent folder or search globally
    */
-  async listFolders(userId: string, parentId?: string): Promise<Folder[]> {
+  async listFolders(userId: string, parentId?: string, search?: string): Promise<Folder[]> {
+    const where: any = {
+      userId,
+      isDeleted: false,
+    };
+
+    if (search) {
+      where.name = { [Op.iLike]: `%${search}%` };
+      // When searching, we ignore parentId to search globally
+    } else {
+      where.parentId = parentId || null;
+    }
+
     return await Folder.findAll({
-      where: {
-        userId,
-        parentId: parentId || null,
-        isDeleted: false,
-      },
+      where,
       order: [['name', 'ASC']],
     });
   }

@@ -66,9 +66,9 @@ export const getFolder = async (req: Request, res: Response) => {
 export const listFolders = async (req: Request, res: Response) => {
   try {
     const userId = req.dbUser!.id;
-    const { parentId } = req.query;
+    const { parentId, search } = req.query;
 
-    const folders = await folderService.listFolders(userId, parentId as string);
+    const folders = await folderService.listFolders(userId, parentId as string, search as string);
 
     const response = {
       folders: folders.map(f => f.toJSON()),

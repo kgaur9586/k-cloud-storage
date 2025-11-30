@@ -15,9 +15,11 @@ import {
     Delete,
     Download,
     Folder,
+    Visibility,
+    PlayArrow,
 } from '@mui/icons-material';
 import * as Icons from '@mui/icons-material';
-import { formatFileSize, getFileIcon, getFileColor } from '../../utils/fileUtils';
+import { formatFileSize, getFileIcon, getFileColor, canPreviewFile, getFileType } from '../../utils/fileUtils';
 import { format } from 'date-fns';
 import fileService from '../../services/fileService';
 import { downloadBlob } from '../../utils/fileUtils';
@@ -34,6 +36,7 @@ export default function FileListItem({
     onNavigate,
     onDelete,
     onRename,
+    onPreview,
 }) {
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
@@ -75,9 +78,21 @@ export default function FileListItem({
         }
     };
 
+    const handlePreview = (e) => {
+        e.stopPropagation();
+        handleMenuClose();
+        if (onPreview) {
+            onPreview(item);
+        }
+    };
+
     const handleRowClick = () => {
         if (type === 'folder' && onNavigate) {
             onNavigate();
+        } else if (type === 'file' && canPreviewFile(item.mimeType, item.name)) {
+            if (onPreview) {
+                onPreview(item);
+            }
         }
     };
 
@@ -85,6 +100,9 @@ export default function FileListItem({
     const iconName = type === 'folder' ? 'Folder' : getFileIcon(item.mimeType, item.name);
     const IconComponent = Icons[iconName] || Icons.InsertDriveFile;
     const iconColor = type === 'folder' ? '#FFA726' : getFileColor(item.mimeType, item.name);
+
+    const fileType = type === 'file' ? getFileType(item.mimeType, item.name) : null;
+    const isPlayable = fileType === 'video' || fileType === 'audio';
 
     return (
         <Box
@@ -95,7 +113,7 @@ export default function FileListItem({
                 gap: 2,
                 p: 1.5,
                 borderRadius: 1,
-                cursor: type === 'folder' ? 'pointer' : 'default',
+                cursor: (type === 'folder' || (type === 'file' && canPreviewFile(item.mimeType, item.name))) ? 'pointer' : 'default',
                 bgcolor: selected ? 'primary.50' : 'transparent',
                 '&:hover': {
                     bgcolor: selected ? 'primary.100' : 'action.hover',
@@ -161,6 +179,15 @@ export default function FileListItem({
                 open={Boolean(menuAnchorEl)}
                 onClose={handleMenuClose}
             >
+                {type === 'file' && canPreviewFile(item.mimeType, item.name) && (
+                    <MenuItem onClick={handlePreview}>
+                        <ListItemIcon>
+                            {isPlayable ? <PlayArrow fontSize="small" /> : <Visibility fontSize="small" />}
+                        </ListItemIcon>
+                        <ListItemText>{isPlayable ? 'Play' : 'Preview'}</ListItemText>
+                    </MenuItem>
+                )}
+
                 {type === 'file' && (
                     <MenuItem onClick={handleDownload}>
                         <ListItemIcon>

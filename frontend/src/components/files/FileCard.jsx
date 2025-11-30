@@ -19,9 +19,10 @@ import {
     Delete,
     Download,
     Visibility,
+    PlayArrow,
 } from '@mui/icons-material';
 import * as Icons from '@mui/icons-material';
-import { formatFileSize, getFileIcon, getFileColor } from '../../utils/fileUtils';
+import { formatFileSize, getFileIcon, getFileColor, canPreviewFile, getFileType } from '../../utils/fileUtils';
 import { format } from 'date-fns';
 import fileService from '../../services/fileService';
 import { downloadBlob } from '../../utils/fileUtils';
@@ -38,6 +39,7 @@ export default function FileCard({
     onNavigate,
     onDelete,
     onRename,
+    onPreview,
 }) {
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
     const [hovering, setHovering] = useState(false);
@@ -80,9 +82,21 @@ export default function FileCard({
         }
     };
 
+    const handlePreview = (e) => {
+        e.stopPropagation();
+        handleMenuClose();
+        if (onPreview) {
+            onPreview(item);
+        }
+    };
+
     const handleCardClick = () => {
         if (type === 'folder') {
             onNavigate();
+        } else if (type === 'file' && canPreviewFile(item.mimeType, item.name)) {
+            if (onPreview) {
+                onPreview(item);
+            }
         }
     };
 
@@ -95,6 +109,9 @@ export default function FileCard({
     const iconName = type === 'folder' ? 'Folder' : getFileIcon(item.mimeType, item.name);
     const IconComponent = Icons[iconName] || Icons.InsertDriveFile;
     const iconColor = type === 'folder' ? '#FFA726' : getFileColor(item.mimeType, item.name);
+
+    const fileType = type === 'file' ? getFileType(item.mimeType, item.name) : null;
+    const isPlayable = fileType === 'video' || fileType === 'audio';
 
     return (
         <Card
@@ -112,7 +129,7 @@ export default function FileCard({
                 },
             }}
         >
-            <CardActionArea onClick={handleCardClick}>
+            <CardActionArea onClick={handleCardClick} onDoubleClick={handleCardClick}>
                 <CardContent>
                     {/* Checkbox */}
                     <Box
@@ -207,6 +224,15 @@ export default function FileCard({
                 open={Boolean(menuAnchorEl)}
                 onClose={handleMenuClose}
             >
+                {type === 'file' && canPreviewFile(item.mimeType, item.name) && (
+                    <MenuItem onClick={handlePreview}>
+                        <ListItemIcon>
+                            {isPlayable ? <PlayArrow fontSize="small" /> : <Visibility fontSize="small" />}
+                        </ListItemIcon>
+                        <ListItemText>{isPlayable ? 'Play' : 'Preview'}</ListItemText>
+                    </MenuItem>
+                )}
+
                 {type === 'file' && (
                     <MenuItem onClick={handleDownload}>
                         <ListItemIcon>

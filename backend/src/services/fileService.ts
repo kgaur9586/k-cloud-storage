@@ -110,12 +110,14 @@ class FileService {
 
     const where: any = {
       userId,
-      folderId: folderId || null,
       isDeleted: false,
     };
 
     if (search) {
       where.name = { [Op.iLike]: `%${search}%` };
+      // When searching, we ignore folderId to search globally
+    } else {
+      where.folderId = folderId || null;
     }
 
     if (mimeType) {

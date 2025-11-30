@@ -35,6 +35,7 @@ export default function FileToolbar({
     onCreateFolder,
     selectedCount,
     onSelectAll,
+    onSearch,
 }) {
     const [sortAnchorEl, setSortAnchorEl] = useState(null);
     const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -57,6 +58,12 @@ export default function FileToolbar({
     const handleCreateFolder = (name) => {
         onCreateFolder(name);
         setCreateFolderOpen(false);
+    };
+
+    const handleSearchChange = (e) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+        onSearch(query);
     };
 
     return (
@@ -122,7 +129,7 @@ export default function FileToolbar({
                     size="small"
                     placeholder="Search files..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={handleSearchChange}
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">

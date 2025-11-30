@@ -24,10 +24,12 @@ export const createFolder = async (name, parentId = null) => {
  * @param {string} parentId - Parent folder ID (null for root)
  * @returns {Promise} List of folders
  */
-export const listFolders = async (parentId = null) => {
-    const response = await api.get('/folders', {
-        params: { parentId: parentId || undefined },
-    });
+export const listFolders = async (parentId = null, search = null) => {
+    const params = { parentId: parentId || undefined };
+    if (search) {
+        params.search = search;
+    }
+    const response = await api.get('/folders', { params });
     return response.data;
 };
 
