@@ -123,7 +123,7 @@ export default function FileToolbar({
             <Box sx={{ flex: 1 }} />
 
             {/* Right Section - View Controls */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                 {/* Search */}
                 <TextField
                     size="small"
@@ -137,7 +137,7 @@ export default function FileToolbar({
                             </InputAdornment>
                         ),
                     }}
-                    sx={{ width: 200 }}
+                    sx={{ width: { xs: '100%', sm: 200 } }}
                 />
 
                 {/* Sort */}

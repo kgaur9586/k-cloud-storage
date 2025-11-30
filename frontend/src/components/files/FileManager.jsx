@@ -306,12 +306,14 @@ export default function FileManager() {
                 </Box>
 
                 {/* Main Content */}
-                <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden', flexDirection: { xs: 'column', md: 'row' } }}>
                     {/* Folder Tree Sidebar */}
                     <Box
                         sx={{
-                            width: 250,
-                            borderRight: 1,
+                            width: { xs: '100%', md: 250 },
+                            height: { xs: '200px', md: 'auto' },
+                            borderRight: { xs: 0, md: 1 },
+                            borderBottom: { xs: 1, md: 0 },
                             borderColor: 'divider',
                             overflow: 'auto',
                             p: 2,
