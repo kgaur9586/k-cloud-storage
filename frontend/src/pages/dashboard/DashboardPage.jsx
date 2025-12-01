@@ -4,6 +4,8 @@ import {
     Container,
     Typography,
     Paper,
+    Tabs,
+    Tab,
 } from '@mui/material';
 import { UserProfile } from '../../components/auth/UserProfile';
 import { LogoutButton } from '../../components/auth/LogoutButton';
@@ -11,18 +13,24 @@ import { UserProfileModal } from '../../components/auth/UserProfileModal';
 import authService from '../../services/authService';
 import { toast } from 'react-toastify';
 import CloudIcon from '@mui/icons-material/Cloud';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import DeleteIcon from '@mui/icons-material/Delete';
 import FileManager from '../../components/files/FileManager';
+import StorageAnalytics from '../../components/analytics/StorageAnalytics';
+import TrashBin from '../../components/trash/TrashBin';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 /**
  * Dashboard page
- * Main page after authentication with file management
+ * Main page after authentication with file management and analytics
  */
 export function DashboardPage() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [partialUser, setPartialUser] = useState(null);
+    const [currentTab, setCurrentTab] = useState(0);
 
     const effectRan = useRef(false);
 
@@ -54,6 +62,10 @@ export function DashboardPage() {
         }
     };
 
+    const handleTabChange = (event, newValue) => {
+        setCurrentTab(newValue);
+    };
+
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             {/* Header */}
@@ -67,17 +79,47 @@ export function DashboardPage() {
                             </Typography>
                         </Box>
                         <Box display="flex" gap={2} alignItems="center">
-                            {/* <UserProfile /> */}
                             {user && <Typography>{user.name || user.email}</Typography>}
                             <LogoutButton />
                         </Box>
                     </Box>
+
+                    {/* Navigation Tabs */}
+                    <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
+                        <Tabs value={currentTab} onChange={handleTabChange}>
+                            <Tab
+                                icon={<InsertDriveFileIcon />}
+                                label="Files"
+                                iconPosition="start"
+                            />
+                            <Tab
+                                icon={<BarChartIcon />}
+                                label="Analytics"
+                                iconPosition="start"
+                            />
+                            <Tab
+                                icon={<DeleteIcon />}
+                                label="Trash"
+                                iconPosition="start"
+                            />
+                        </Tabs>
+                    </Box>
                 </Container>
             </Paper>
 
-            {/* File Manager */}
+            {/* Content */}
             <ErrorBoundary>
-                <FileManager />
+                {currentTab === 0 && <FileManager />}
+                {currentTab === 1 && (
+                    <Container maxWidth="xl" sx={{ py: 3 }}>
+                        <StorageAnalytics />
+                    </Container>
+                )}
+                {currentTab === 2 && (
+                    <Container maxWidth="xl" sx={{ py: 3 }}>
+                        <TrashBin />
+                    </Container>
+                )}
             </ErrorBoundary>
         </Box>
     );

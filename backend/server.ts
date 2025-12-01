@@ -8,6 +8,8 @@ import authRoutes from './src/routes/auth.routes.js';
 import fileRoutes from './src/routes/file.routes.js';
 import folderRoutes from './src/routes/folder.routes.js';
 import publicRoutes from './src/routes/publicRoutes.js';
+import analyticsRoutes from './src/routes/analytics.routes.js';
+import trashRoutes from './src/routes/trash.routes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { apiLimiter } from './src/middleware/rateLimiter.js';
 import { setupSwagger } from './src/config/swagger.js';
@@ -85,6 +87,8 @@ app.use('/api/public', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/trash', trashRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

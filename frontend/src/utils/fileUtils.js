@@ -82,7 +82,7 @@ export const getFileType = (mimeType, filename = '') => {
  */
 export const canPreviewFile = (mimeType, filename) => {
     const type = getFileType(mimeType, filename);
-    return ['image', 'video', 'audio', 'pdf', 'text'].includes(type);
+    return ['image', 'video', 'audio', 'pdf', 'text', 'document', 'code'].includes(type);
 };
 
 /**

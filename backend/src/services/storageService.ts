@@ -69,11 +69,19 @@ class StorageService {
   }
 
   /**
-   * Calculate SHA256 hash of file
-   * This is a utility method independent of storage provider
+   * Calculate file hash (SHA-256)
    */
-  async calculateHash(fileBuffer: Buffer): Promise<string> {
-    return crypto.createHash('sha256').update(fileBuffer).digest('hex');
+  calculateHash(buffer: Buffer): Promise<string> {
+    return Promise.resolve(
+      crypto.createHash('sha256').update(buffer).digest('hex')
+    );
+  }
+
+  /**
+   * Get absolute path from relative path
+   */
+  async getAbsolutePath(relativePath: string): Promise<string> {
+    return await this.provider.getAbsolutePath(relativePath);
   }
 }
 

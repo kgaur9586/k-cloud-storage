@@ -48,6 +48,37 @@ class FileService {
     // Save file to storage
     const relativePath = await storageService.saveFile(userId, fileBuffer, originalName);
 
+    // Initialize metadata and thumbnail path
+    let metadata: Record<string, any> | null = null;
+    let thumbnailPath: string | null = null;
+
+    // Process images: generate thumbnail and extract metadata
+    if (mimeType.startsWith('image/')) {
+      try {
+        const mediaService = (await import('./mediaService.js')).default;
+        
+        // Extract image metadata
+        const imageMetadata = await mediaService.getImageMetadata(fileBuffer);
+        metadata = imageMetadata;
+
+        // Generate thumbnail
+        const thumbnailRelativePath = mediaService.generateThumbnailPath(relativePath);
+        const thumbnailAbsolutePath = await storageService.getAbsolutePath(thumbnailRelativePath);
+        
+        // Ensure thumbnail directory exists
+        await mediaService.ensureThumbnailDir(thumbnailAbsolutePath);
+        
+        // Generate and save thumbnail
+        await mediaService.generateImageThumbnail(fileBuffer, thumbnailAbsolutePath, 'medium');
+        thumbnailPath = thumbnailRelativePath;
+
+        await logger.info('Thumbnail generated for image', { fileId: originalName, thumbnailPath });
+      } catch (error) {
+        await logger.error('Failed to process image', { error, filename: originalName });
+        // Continue without thumbnail if generation fails
+      }
+    }
+
     // Create file record
     const file = await File.create({
       userId,
@@ -58,6 +89,8 @@ class FileService {
       size: fileSize,
       path: relativePath,
       hash,
+      thumbnailPath,
+      metadata,
     });
 
     // Update user storage usage
@@ -70,6 +103,7 @@ class FileService {
       filename: originalName,
       size: fileSize,
       mimeType,
+      hasThumbnail: !!thumbnailPath,
     });
 
     return file;

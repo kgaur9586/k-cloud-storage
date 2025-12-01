@@ -11,6 +11,7 @@ import {
     IconButton,
 } from '@mui/material';
 import { Close, Download } from '@mui/icons-material';
+import mammoth from 'mammoth';
 import fileService from '../../services/fileService';
 import { getFileType, downloadBlob } from '../../utils/fileUtils';
 
@@ -23,6 +24,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
     const [contentUrl, setContentUrl] = useState(null);
     const [error, setError] = useState(null);
     const [textContent, setTextContent] = useState(null);
+    const [docxHtml, setDocxHtml] = useState(null);
 
     useEffect(() => {
         if (open && file) {
@@ -34,6 +36,7 @@ export default function FilePreviewModal({ file, open, onClose }) {
                 setContentUrl(null);
             }
             setTextContent(null);
+            setDocxHtml(null);
             setError(null);
         }
     }, [open, file]);
@@ -47,11 +50,19 @@ export default function FilePreviewModal({ file, open, onClose }) {
             const url = URL.createObjectURL(blob);
             setContentUrl(url);
 
-            // For text files, read the content
             const type = getFileType(file.mimeType, file.name);
+
+            // For text files, read the content
             if (type === 'text' || type === 'code') {
                 const text = await blob.text();
                 setTextContent(text);
+            }
+
+            // For .docx files, convert to HTML
+            if (type === 'document' && file.name.endsWith('.docx')) {
+                const arrayBuffer = await blob.arrayBuffer();
+                const result = await mammoth.convertToHtml({ arrayBuffer });
+                setDocxHtml(result.value);
             }
         } catch (err) {
             console.error('Failed to load file preview:', err);
@@ -149,6 +160,40 @@ export default function FilePreviewModal({ file, open, onClose }) {
                         }}
                     >
                         {textContent}
+                    </Box>
+                );
+            case 'document':
+                // If we have converted docx HTML, show it
+                if (docxHtml) {
+                    return (
+                        <Box
+                            sx={{
+                                p: 3,
+                                bgcolor: 'white',
+                                borderRadius: 1,
+                                overflow: 'auto',
+                                maxHeight: '70vh',
+                                '& img': { maxWidth: '100%' },
+                                '& table': { borderCollapse: 'collapse', width: '100%' },
+                                '& td, & th': { border: '1px solid #ddd', padding: '8px' },
+                            }}
+                            dangerouslySetInnerHTML={{ __html: docxHtml }}
+                        />
+                    );
+                }
+                // Otherwise show download option
+                return (
+                    <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight={200}>
+                        <Typography variant="body1" gutterBottom>
+                            Preview not available for this file type
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            startIcon={<Download />}
+                            onClick={handleDownload}
+                        >
+                            Download to view
+                        </Button>
                     </Box>
                 );
             default:
