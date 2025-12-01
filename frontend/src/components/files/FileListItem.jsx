@@ -37,6 +37,7 @@ export default function FileListItem({
     onDelete,
     onRename,
     onPreview,
+    onShare,
 }) {
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
 
@@ -47,6 +48,14 @@ export default function FileListItem({
 
     const handleMenuClose = () => {
         setMenuAnchorEl(null);
+    };
+
+    const handleShare = (e) => {
+        e.stopPropagation();
+        handleMenuClose();
+        if (onShare) {
+            onShare(item);
+        }
     };
 
     const handleDownload = async (e) => {
@@ -140,7 +149,7 @@ export default function FileListItem({
             />
 
             {/* Name */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography
                     variant="body2"
                     fontWeight={500}
@@ -149,6 +158,14 @@ export default function FileListItem({
                 >
                     {item.name}
                 </Typography>
+                {item.isPublic && (
+                    <Icons.Public
+                        fontSize="small"
+                        color="success"
+                        sx={{ fontSize: 16 }}
+                        titleAccess="Publicly accessible"
+                    />
+                )}
             </Box>
 
             {/* Size */}
@@ -185,6 +202,15 @@ export default function FileListItem({
                             {isPlayable ? <PlayArrow fontSize="small" /> : <Visibility fontSize="small" />}
                         </ListItemIcon>
                         <ListItemText>{isPlayable ? 'Play' : 'Preview'}</ListItemText>
+                    </MenuItem>
+                )}
+
+                {type === 'file' && (
+                    <MenuItem onClick={handleShare}>
+                        <ListItemIcon>
+                            <Icons.Share fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Share</ListItemText>
                     </MenuItem>
                 )}
 

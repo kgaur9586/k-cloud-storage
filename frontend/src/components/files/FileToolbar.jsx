@@ -19,6 +19,7 @@ import {
     Sort,
     Search,
     SelectAll,
+    Delete,
 } from '@mui/icons-material';
 import CreateFolderDialog from './CreateFolderDialog';
 
@@ -36,6 +37,7 @@ export default function FileToolbar({
     selectedCount,
     onSelectAll,
     onSearch,
+    onBulkDelete,
 }) {
     const [sortAnchorEl, setSortAnchorEl] = useState(null);
     const [createFolderOpen, setCreateFolderOpen] = useState(false);
@@ -111,11 +113,18 @@ export default function FileToolbar({
                 </Button>
 
                 {selectedCount > 0 && (
-                    <Tooltip title="Select All">
-                        <IconButton onClick={onSelectAll} color="primary">
-                            <SelectAll />
-                        </IconButton>
-                    </Tooltip>
+                    <>
+                        <Tooltip title="Select All">
+                            <IconButton onClick={onSelectAll} color="primary">
+                                <SelectAll />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete Selected">
+                            <IconButton onClick={onBulkDelete} color="error">
+                                <Delete />
+                            </IconButton>
+                        </Tooltip>
+                    </>
                 )}
             </Box>
 

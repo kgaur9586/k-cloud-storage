@@ -27,4 +27,8 @@ router.put('/:id', fileController.renameFile);
 router.delete('/:id', fileController.deleteFile);
 router.post('/:id/move', fileController.moveFile);
 
+// File sharing
+router.put('/:id/visibility', fileController.toggleFileVisibility);
+router.get('/:id/share-link', fileController.getShareLink);
+
 export default router;

@@ -127,6 +127,44 @@ export const findDuplicates = async () => {
     return response.data;
 };
 
+/**
+ * Toggle file visibility (public/private)
+ * @param {string} fileId - File ID
+ * @param {boolean} isPublic - Whether file should be public
+ * @returns {Promise} Updated file metadata
+ */
+export const toggleFileVisibility = async (fileId, isPublic) => {
+    const response = await api.put(`/files/${fileId}/visibility`, { isPublic });
+    return response.data;
+};
+
+/**
+ * Get share link for a public file
+ * @param {string} fileId - File ID
+ * @returns {Promise} Share link and token
+ */
+export const getShareLink = async (fileId) => {
+    const response = await api.get(`/files/${fileId}/share-link`);
+    return response.data;
+};
+
+/**
+ * Get public file (no authentication required)
+ * @param {string} shareToken - Share token
+ * @returns {Promise} File metadata
+ */
+export const getPublicFile = async (shareToken) => {
+    // Use direct fetch for public endpoint (no auth)
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const response = await fetch(`${baseURL}/api/public/files/${shareToken}/metadata`);
+
+    if (!response.ok) {
+        throw new Error('Failed to get public file');
+    }
+
+    return await response.json();
+};
+
 const fileService = {
     uploadFiles,
     listFiles,
@@ -137,6 +175,9 @@ const fileService = {
     deleteFile,
     getFileStats,
     findDuplicates,
+    toggleFileVisibility,
+    getShareLink,
+    getPublicFile,
 };
 
 export default fileService;

@@ -9,6 +9,7 @@ import FolderTree from './FolderTree';
 import FileList from './FileList';
 import FileUploadZone from './FileUploadZone';
 import FilePreviewModal from './FilePreviewModal';
+import ShareFileDialog from './ShareFileDialog';
 
 /**
  * FileManager Component
@@ -29,6 +30,8 @@ export default function FileManager() {
     const [breadcrumbPath, setBreadcrumbPath] = useState([]);
     const [previewFile, setPreviewFile] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [shareDialogOpen, setShareDialogOpen] = useState(false);
+    const [fileToShare, setFileToShare] = useState(null);
     const initialLoadDone = useRef(false);
 
     // Load initial data - runs only once on mount
@@ -241,6 +244,39 @@ export default function FileManager() {
     };
 
     /**
+     * Handle bulk deletion
+     */
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) {
+            return;
+        }
+
+        try {
+            const deletePromises = selectedItems.map(itemId => {
+                // itemId format is "type-uuid", e.g. "folder-123e4567-e89b-12d3-a456-426614174000"
+                const firstHyphenIndex = itemId.indexOf('-');
+                const type = itemId.substring(0, firstHyphenIndex);
+                const id = itemId.substring(firstHyphenIndex + 1);
+
+                if (type === 'file') {
+                    return fileService.deleteFile(id);
+                } else {
+                    return folderService.deleteFolder(id);
+                }
+            });
+
+            await Promise.all(deletePromises);
+            toast.success('Selected items deleted successfully');
+            setSelectedItems([]);
+            await reloadCurrentData();
+            await reloadFolderTree();
+        } catch (error) {
+            console.error('Failed to delete items:', error);
+            toast.error('Failed to delete some items');
+        }
+    };
+
+    /**
      * Handle item rename
      */
     const handleRename = async (item, type, newName) => {
@@ -272,6 +308,25 @@ export default function FileManager() {
     };
 
     /**
+     * Handle file share
+     */
+    const handleShare = (file) => {
+        setFileToShare(file);
+        setShareDialogOpen(true);
+    };
+
+    const handleCloseShare = () => {
+        setShareDialogOpen(false);
+        setFileToShare(null);
+    };
+
+    const handleShareUpdate = (updatedFile) => {
+        setFiles(prevFiles =>
+            prevFiles.map(f => f.id === updatedFile.id ? updatedFile : f)
+        );
+    };
+
+    /**
      * Handle search
      */
     const handleSearch = (query) => {
@@ -295,6 +350,7 @@ export default function FileManager() {
                     selectedCount={selectedItems.length}
                     onSelectAll={handleSelectAll}
                     onSearch={handleSearch}
+                    onBulkDelete={handleBulkDelete}
                 />
 
                 {/* Breadcrumb */}
@@ -350,6 +406,7 @@ export default function FileManager() {
                                     onDelete={handleDelete}
                                     onRename={handleRename}
                                     onPreview={handlePreview}
+                                    onShare={handleShare}
                                 />
                             </>
                         )}
@@ -362,6 +419,14 @@ export default function FileManager() {
                 file={previewFile}
                 open={Boolean(previewFile)}
                 onClose={handleClosePreview}
+            />
+
+            {/* Share Dialog */}
+            <ShareFileDialog
+                file={fileToShare}
+                open={shareDialogOpen}
+                onClose={handleCloseShare}
+                onUpdate={handleShareUpdate}
             />
         </Container>
     );

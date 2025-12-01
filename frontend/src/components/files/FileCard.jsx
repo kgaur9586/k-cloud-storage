@@ -40,6 +40,7 @@ export default function FileCard({
     onDelete,
     onRename,
     onPreview,
+    onShare,
 }) {
     const [menuAnchorEl, setMenuAnchorEl] = useState(null);
     const [hovering, setHovering] = useState(false);
@@ -79,6 +80,14 @@ export default function FileCard({
         handleMenuClose();
         if (window.confirm(`Are you sure you want to delete "${item.name}"?`)) {
             onDelete();
+        }
+    };
+
+    const handleShare = (e) => {
+        e.stopPropagation();
+        handleMenuClose();
+        if (onShare) {
+            onShare(item);
         }
     };
 
@@ -166,6 +175,21 @@ export default function FileCard({
                         </IconButton>
                     </Box>
 
+                    {/* Public Indicator */}
+                    {item.isPublic && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 40,
+                                color: 'success.main',
+                            }}
+                            title="Publicly accessible"
+                        >
+                            <Icons.Public fontSize="small" />
+                        </Box>
+                    )}
+
                     {/* Icon */}
                     <Box
                         sx={{
@@ -230,6 +254,15 @@ export default function FileCard({
                             {isPlayable ? <PlayArrow fontSize="small" /> : <Visibility fontSize="small" />}
                         </ListItemIcon>
                         <ListItemText>{isPlayable ? 'Play' : 'Preview'}</ListItemText>
+                    </MenuItem>
+                )}
+
+                {type === 'file' && (
+                    <MenuItem onClick={handleShare}>
+                        <ListItemIcon>
+                            <Icons.Share fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>Share</ListItemText>
                     </MenuItem>
                 )}
 

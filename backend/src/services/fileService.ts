@@ -332,6 +332,87 @@ class FileService {
       filesByType,
     };
   }
+
+  /**
+   * Toggle file visibility (public/private)
+   */
+  async toggleFileVisibility(fileId: string, userId: string, isPublic: boolean): Promise<File> {
+    const file = await File.findOne({
+      where: { id: fileId, userId, isDeleted: false },
+    });
+
+    if (!file) {
+      throw new Error('File not found');
+    }
+
+    // Generate share token if making public and doesn't have one
+    if (isPublic && !file.shareToken) {
+      const { v4: uuidv4 } = await import('uuid');
+      file.shareToken = uuidv4();
+    }
+
+    // Clear share token if making private
+    if (!isPublic) {
+      file.shareToken = null;
+      file.publicAccessCount = 0;
+    }
+
+    file.isPublic = isPublic;
+    await file.save();
+
+    await logger.info('File visibility toggled', { fileId, userId, isPublic });
+    return file;
+  }
+
+  /**
+   * Get public file by share token
+   */
+  async getPublicFile(shareToken: string): Promise<File> {
+    const file = await File.findOne({
+      where: { 
+        shareToken, 
+        isPublic: true, 
+        isDeleted: false 
+      },
+    });
+
+    if (!file) {
+      throw new Error('Public file not found');
+    }
+
+    // Increment access count
+    file.publicAccessCount = (file.publicAccessCount || 0) + 1;
+    await file.save();
+
+    await logger.info('Public file accessed', { fileId: file.id, shareToken });
+    return file;
+  }
+
+  /**
+   * Get share link for a file
+   */
+  async getShareLink(fileId: string, userId: string): Promise<{ shareLink: string; shareToken: string }> {
+    const file = await File.findOne({
+      where: { id: fileId, userId, isDeleted: false },
+    });
+
+    if (!file) {
+      throw new Error('File not found');
+    }
+
+    if (!file.isPublic) {
+      throw new Error('File is not public');
+    }
+
+    if (!file.shareToken) {
+      throw new Error('File does not have a share token');
+    }
+
+    const baseUrl = process.env.API_URL || 'http://localhost:3000';
+    const shareLink = `${baseUrl}/api/public/files/${file.shareToken}`;
+
+    return { shareLink, shareToken: file.shareToken };
+  }
 }
 
 export default new FileService();

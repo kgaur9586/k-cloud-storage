@@ -267,3 +267,48 @@ export const findDuplicates = async (req: Request, res: Response) => {
     return ApiResponse.error(500, error.message).send(res);
   }
 };
+
+/**
+ * Toggle file visibility (public/private)
+ * PUT /api/files/:id/visibility
+ */
+export const toggleFileVisibility = async (req: Request, res: Response) => {
+  try {
+    const userId = req.dbUser!.id;
+    const { id } = req.params;
+    const { isPublic } = req.body;
+
+    if (typeof isPublic !== 'boolean') {
+      return ApiResponse.error(400, 'isPublic must be a boolean').send(res);
+    }
+
+    const file = await fileService.toggleFileVisibility(id, userId, isPublic);
+
+    return ApiResponse.success(
+      { file: file.toJSON() },
+      `File is now ${isPublic ? 'public' : 'private'}`
+    ).send(res);
+  } catch (error: any) {
+    return ApiResponse.error(500, error.message).send(res);
+  }
+};
+
+/**
+ * Get share link for a file
+ * GET /api/files/:id/share-link
+ */
+export const getShareLink = async (req: Request, res: Response) => {
+  try {
+    const userId = req.dbUser!.id;
+    const { id } = req.params;
+
+    const { shareLink, shareToken } = await fileService.getShareLink(id, userId);
+
+    return ApiResponse.success(
+      { shareLink, shareToken },
+      'Share link retrieved successfully'
+    ).send(res);
+  } catch (error: any) {
+    return ApiResponse.error(500, error.message).send(res);
+  }
+};

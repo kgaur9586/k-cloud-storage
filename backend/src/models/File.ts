@@ -14,6 +14,9 @@ class File extends Model<InferAttributes<File>, InferCreationAttributes<File>> {
   declare hash: string;
   declare thumbnailPath: CreationOptional<string | null>;
   declare metadata: CreationOptional<object | null>;
+  declare isPublic: CreationOptional<boolean>;
+  declare shareToken: CreationOptional<string | null>;
+  declare publicAccessCount: CreationOptional<number>;
   declare isDeleted: CreationOptional<boolean>;
   declare deletedAt: CreationOptional<Date | null>;
   declare createdAt: CreationOptional<Date>;
@@ -150,6 +153,25 @@ File.init({
     allowNull: true,
     comment: 'Additional metadata (dimensions, duration, etc.)',
   },
+  isPublic: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    field: 'is_public',
+    comment: 'Whether file is publicly accessible',
+  },
+  shareToken: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    unique: true,
+    field: 'share_token',
+    comment: 'Unique token for public access',
+  },
+  publicAccessCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    field: 'public_access_count',
+    comment: 'Number of times file was accessed publicly',
+  },
   isDeleted: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
@@ -190,6 +212,14 @@ File.init({
     {
       fields: ['mime_type'],
       name: 'idx_files_mime_type',
+    },
+    {
+      fields: ['share_token'],
+      name: 'idx_files_share_token',
+    },
+    {
+      fields: ['is_public'],
+      name: 'idx_files_is_public',
     },
   ],
 });

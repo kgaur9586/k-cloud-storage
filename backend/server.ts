@@ -7,6 +7,7 @@ import { logger } from './src/utils/logger.js';
 import authRoutes from './src/routes/auth.routes.js';
 import fileRoutes from './src/routes/file.routes.js';
 import folderRoutes from './src/routes/folder.routes.js';
+import publicRoutes from './src/routes/publicRoutes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { apiLimiter } from './src/middleware/rateLimiter.js';
 import { setupSwagger } from './src/config/swagger.js';
@@ -77,7 +78,10 @@ app.get('/health', (req, res) => {
 // Swagger API Documentation
 setupSwagger(app);
 
-// API routes
+// Public routes (no authentication)
+app.use('/api/public', publicRoutes);
+
+// API routes (authenticated)
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);
