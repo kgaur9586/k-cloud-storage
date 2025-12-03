@@ -10,6 +10,7 @@ import folderRoutes from './src/routes/folder.routes.js';
 import publicRoutes from './src/routes/publicRoutes.js';
 import analyticsRoutes from './src/routes/analytics.routes.js';
 import trashRoutes from './src/routes/trash.routes.js';
+import versionRoutes from './src/routes/version.routes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { apiLimiter } from './src/middleware/rateLimiter.js';
 import { setupSwagger } from './src/config/swagger.js';
@@ -43,11 +44,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Request logging middleware
 app.use(async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const start = Date.now();
-  
+
   // Log response when finished
   res.on('finish', async () => {
     const duration = Date.now() - start;
-    
+
     // Only log if not a health check
     if (req.path !== '/health') {
       await logger.info('HTTP Request', {
@@ -61,7 +62,7 @@ app.use(async (req: express.Request, res: express.Response, next: express.NextFu
       });
     }
   });
-  
+
   next();
 });
 
@@ -70,11 +71,11 @@ app.use('/api', apiLimiter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV,
-    });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+  });
 });
 
 // Swagger API Documentation
@@ -85,10 +86,17 @@ app.use('/api/public', publicRoutes);
 
 // API routes (authenticated)
 app.use('/api/auth', authRoutes);
-app.use('/api/files', fileRoutes);
+app.use('/api/files', fileRoutes); // Note: version routes are mounted under /api/files in server.ts? No, usually separate or nested.
+// Let's mount it under /api/files for consistency with the route definition which expects /:fileId/versions
+// Wait, if I mount it at /api/files, it might conflict with fileRoutes if not careful.
+// fileRoutes probably handles /:id.
+// If I mount versionRoutes at /api/files, and versionRoutes has /:fileId/versions, it will match /api/files/:fileId/versions.
+// But fileRoutes might catch it first if it has /:id.
+// Let's check fileRoutes.
 app.use('/api/folders', folderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/trash', trashRoutes);
+app.use('/api/files', versionRoutes); // Mount version routes also under /api/files to match the path structure
 
 // 404 handler
 app.use(notFoundHandler);
@@ -100,61 +108,61 @@ app.use(errorHandler);
  * Start server and initialize database
  */
 async function startServer() {
-    try {
-        // Test database connection
-        await sequelize.authenticate();
-        console.log('✅ Database connected successfully');
-        await logger.info('Database connected', {
-            database: process.env.DB_NAME,
-        });
+  try {
+    // Test database connection
+    await sequelize.authenticate();
+    console.log('✅ Database connected successfully');
+    await logger.info('Database connected', {
+      database: process.env.DB_NAME,
+    });
 
-        // Setup model associations
-        setupAssociations();
-        console.log('✅ Model associations configured');
+    // Setup model associations
+    setupAssociations();
+    console.log('✅ Model associations configured');
 
-        // Sync models in development
-        if (process.env.NODE_ENV === 'development') {
-            await sequelize.sync();
-            console.log('✅ Database models synchronized');
-            await logger.info('Database models synchronized');
-        }
-
-        // Start HTTP server
-        app.listen(PORT, () => {
-            console.log(`🚀 Server running on http://localhost:${PORT}`);
-            console.log(`📝 Environment: ${process.env.NODE_ENV}`);
-            console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
-            console.log(`🔐 Logto endpoint: ${process.env.LOGTO_ENDPOINT}`);
-            console.log(`📊 Axiom dataset: ${process.env.AXIOM_DATASET}`);
-
-            logger.info('Server started', {
-                port: PORT,
-                environment: process.env.NODE_ENV,
-            });
-        });
-    } catch (error: any) {
-        console.error('❌ Failed to start server:', error);
-        await logger.error('Server startup failed', {
-            error: error.message,
-            stack: error.stack,
-        });
-        process.exit(1);
+    // Sync models in development
+    if (process.env.NODE_ENV === 'development') {
+      await sequelize.sync();
+      console.log('✅ Database models synchronized');
+      await logger.info('Database models synchronized');
     }
+
+    // Start HTTP server
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`📝 Environment: ${process.env.NODE_ENV}`);
+      console.log(`📚 API Docs: http://localhost:${PORT}/api-docs`);
+      console.log(`🔐 Logto endpoint: ${process.env.LOGTO_ENDPOINT}`);
+      console.log(`📊 Axiom dataset: ${process.env.AXIOM_DATASET}`);
+
+      logger.info('Server started', {
+        port: PORT,
+        environment: process.env.NODE_ENV,
+      });
+    });
+  } catch (error: any) {
+    console.error('❌ Failed to start server:', error);
+    await logger.error('Server startup failed', {
+      error: error.message,
+      stack: error.stack,
+    });
+    process.exit(1);
+  }
 }
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {
-    console.log('SIGTERM received, shutting down gracefully...');
-    await logger.info('Server shutting down');
-    await sequelize.close();
-    process.exit(0);
+  console.log('SIGTERM received, shutting down gracefully...');
+  await logger.info('Server shutting down');
+  await sequelize.close();
+  process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-    console.log('\nSIGINT received, shutting down gracefully...');
-    await logger.info('Server shutting down');
-    await sequelize.close();
-    process.exit(0);
+  console.log('\nSIGINT received, shutting down gracefully...');
+  await logger.info('Server shutting down');
+  await sequelize.close();
+  process.exit(0);
 });
 
 startServer();

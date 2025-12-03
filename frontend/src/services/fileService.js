@@ -165,6 +165,29 @@ export const getPublicFile = async (shareToken) => {
     return await response.json();
 };
 
+
+
+/**
+ * Get file versions
+ * @param {string} fileId - File ID
+ * @returns {Promise} List of file versions
+ */
+export const getVersions = async (fileId) => {
+    const response = await api.get(`/files/${fileId}/versions`);
+    return response.data;
+};
+
+/**
+ * Restore file version
+ * @param {string} fileId - File ID
+ * @param {string} versionId - Version ID
+ * @returns {Promise} Restored file
+ */
+export const restoreVersion = async (fileId, versionId) => {
+    const response = await api.post(`/files/${fileId}/versions/${versionId}/restore`);
+    return response.data;
+};
+
 const fileService = {
     uploadFiles,
     listFiles,
@@ -178,6 +201,8 @@ const fileService = {
     toggleFileVisibility,
     getShareLink,
     getPublicFile,
+    getVersions,
+    restoreVersion,
 };
 
 export default fileService;

@@ -2,6 +2,7 @@ import sequelize from '../config/database.js';
 import User from './User.js';
 import File from './File.js';
 import Folder from './Folder.js';
+import FileVersion from './FileVersion.js';
 
 /**
  * Models registry
@@ -11,6 +12,7 @@ const models = {
     User,
     File,
     Folder,
+    FileVersion,
 };
 
 /**
@@ -25,6 +27,11 @@ export const setupAssociations = () => {
     // File associations
     File.belongsTo(User, { foreignKey: 'userId', as: 'owner' });
     File.belongsTo(Folder, { foreignKey: 'folderId', as: 'folder' });
+    File.hasMany(FileVersion, { foreignKey: 'fileId', as: 'versions' });
+
+    // FileVersion associations
+    FileVersion.belongsTo(File, { foreignKey: 'fileId', as: 'file' });
+    FileVersion.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
 
     // Folder associations
     Folder.belongsTo(User, { foreignKey: 'userId', as: 'owner' });

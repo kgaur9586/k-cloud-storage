@@ -1,7 +1,4 @@
-import { Router } from 'express';
-import * as fileController from '../controllers/fileController.js';
-import { requireAuth, requireDbUser } from '../middleware/logto.js';
-import { upload, handleUploadError } from '../middleware/upload.middleware.js';
+
 
 import { Router } from 'express';
 import * as fileController from '../controllers/fileController.js';
@@ -194,6 +191,32 @@ router.get('/:id', fileController.getFile);
  *         description: File not found
  */
 router.get('/:id/download', fileController.downloadFile);
+
+/**
+ * @swagger
+ * /api/files/{id}/thumbnail:
+ *   get:
+ *     summary: Get file thumbnail
+ *     tags: [Files]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Thumbnail image
+ *         content:
+ *           image/jpeg:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Thumbnail not available
+ */
+router.get('/:id/thumbnail', fileController.getFileThumbnail);
 
 /**
  * @swagger

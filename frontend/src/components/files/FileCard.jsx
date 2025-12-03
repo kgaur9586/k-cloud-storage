@@ -26,6 +26,7 @@ import { formatFileSize, getFileIcon, getFileColor, canPreviewFile, getFileType 
 import { format } from 'date-fns';
 import fileService from '../../services/fileService';
 import { downloadBlob } from '../../utils/fileUtils';
+import AuthenticatedThumbnail from './AuthenticatedThumbnail';
 
 /**
  * FileCard Component
@@ -190,21 +191,38 @@ export default function FileCard({
                         </Box>
                     )}
 
-                    {/* Icon */}
+                    {/* Icon or Thumbnail */}
                     <Box
                         sx={{
                             display: 'flex',
                             justifyContent: 'center',
+                            alignItems: 'center',
                             mb: 2,
                             mt: 3,
+                            height: 80,
                         }}
                     >
-                        <IconComponent
-                            sx={{
-                                fontSize: 64,
-                                color: iconColor,
-                            }}
-                        />
+                        {type === 'file' && item.thumbnailPath && (item.mimeType?.startsWith('image/') || item.mimeType?.startsWith('video/')) ? (
+                            <AuthenticatedThumbnail
+                                fileId={item.id}
+                                name={item.name}
+                                fallback={() => (
+                                    <IconComponent
+                                        sx={{
+                                            fontSize: 64,
+                                            color: iconColor,
+                                        }}
+                                    />
+                                )}
+                            />
+                        ) : (
+                            <IconComponent
+                                sx={{
+                                    fontSize: 64,
+                                    color: iconColor,
+                                }}
+                            />
+                        )}
                     </Box>
 
                     {/* Name */}
@@ -292,3 +310,5 @@ export default function FileCard({
         </Card>
     );
 }
+
+

@@ -1,3 +1,4 @@
+import FileVersion from '../models/FileVersion.js';
 import File from '../models/File.js';
 import Folder from '../models/Folder.js';
 import User from '../models/User.js';
@@ -25,7 +26,7 @@ class FileService {
       const folder = await Folder.findOne({
         where: { id: folderId, userId, isDeleted: false },
       });
-      
+
       if (!folder) {
         throw new Error('Folder not found');
       }
@@ -42,10 +43,24 @@ class FileService {
       throw new Error('Storage quota exceeded');
     }
 
+    // Check for existing file with same name in folder
+    const existingFile = await File.findOne({
+      where: {
+        userId,
+        folderId: folderId || null,
+        name: originalName,
+        isDeleted: false,
+      },
+    });
+
     // Calculate file hash
     const hash = await storageService.calculateHash(fileBuffer);
 
     // Save file to storage
+    // If versioning, we might want to append a timestamp or version to the filename in storage to avoid overwriting?
+    // storageService.saveFile uses a UUID-based path usually, let's check.
+    // storageService.saveFile(userId, buffer, originalName) -> returns relative path
+    // It seems storageService handles unique paths.
     const relativePath = await storageService.saveFile(userId, fileBuffer, originalName);
 
     // Initialize metadata and thumbnail path
@@ -56,7 +71,7 @@ class FileService {
     if (mimeType.startsWith('image/')) {
       try {
         const mediaService = (await import('./mediaService.js')).default;
-        
+
         // Extract image metadata
         const imageMetadata = await mediaService.getImageMetadata(fileBuffer);
         metadata = imageMetadata;
@@ -64,10 +79,10 @@ class FileService {
         // Generate thumbnail
         const thumbnailRelativePath = mediaService.generateThumbnailPath(relativePath);
         const thumbnailAbsolutePath = await storageService.getAbsolutePath(thumbnailRelativePath);
-        
+
         // Ensure thumbnail directory exists
         await mediaService.ensureThumbnailDir(thumbnailAbsolutePath);
-        
+
         // Generate and save thumbnail
         await mediaService.generateImageThumbnail(fileBuffer, thumbnailAbsolutePath, 'medium');
         thumbnailPath = thumbnailRelativePath;
@@ -77,6 +92,72 @@ class FileService {
         await logger.error('Failed to process image', { error, filename: originalName });
         // Continue without thumbnail if generation fails
       }
+    }
+
+    console.log('FILE UPLOAD - mimeType:', mimeType, 'isVideo:', mimeType.startsWith('video/'));
+
+    // Process videos: generate thumbnail and extract metadata
+    if (mimeType.startsWith('video/')) {
+      console.log('STARTING VIDEO PROCESSING for:', originalName);
+      try {
+        const mediaService = (await import('./mediaService.js')).default;
+
+        // Get absolute path of the uploaded video
+        const videoAbsolutePath = await storageService.getAbsolutePath(relativePath);
+
+        // Extract video metadata
+        const videoMetadata = await mediaService.getVideoMetadata(videoAbsolutePath);
+        metadata = videoMetadata;
+
+        // Generate thumbnail
+        const thumbnailRelativePath = mediaService.generateThumbnailPath(relativePath);
+        const thumbnailAbsolutePath = await storageService.getAbsolutePath(thumbnailRelativePath);
+
+        // Ensure thumbnail directory exists
+        await mediaService.ensureThumbnailDir(thumbnailAbsolutePath);
+
+        // Generate and save thumbnail
+        await mediaService.generateVideoThumbnail(videoAbsolutePath, thumbnailAbsolutePath, 'medium');
+        thumbnailPath = thumbnailRelativePath;
+
+        await logger.info('Thumbnail generated for video', { fileId: originalName, thumbnailPath });
+      } catch (error) {
+        console.error('VIDEO PROCESSING ERROR:', error);
+        await logger.error('Failed to process video', { error, filename: originalName });
+        // Continue without thumbnail if generation fails
+      }
+    }
+
+    if (existingFile) {
+      // Create version for current state
+      await FileVersion.create({
+        fileId: existingFile.id,
+        versionNumber: existingFile.currentVersion || 1,
+        path: existingFile.path,
+        size: existingFile.size,
+        mimeType: existingFile.mimeType,
+        createdBy: userId,
+      });
+
+      // Update existing file
+      existingFile.size = fileSize;
+      existingFile.path = relativePath;
+      existingFile.mimeType = mimeType;
+      existingFile.hash = hash;
+      existingFile.thumbnailPath = thumbnailPath;
+      existingFile.metadata = metadata;
+      existingFile.currentVersion = (existingFile.currentVersion || 1) + 1;
+
+      await existingFile.save();
+
+      await logger.info('File version updated', {
+        userId,
+        fileId: existingFile.id,
+        version: existingFile.currentVersion,
+        filename: originalName,
+      });
+
+      return existingFile;
     }
 
     // Create file record
@@ -91,6 +172,7 @@ class FileService {
       hash,
       thumbnailPath,
       metadata,
+      currentVersion: 1,
     });
 
     // Update user storage usage
@@ -175,7 +257,7 @@ class FileService {
    */
   async downloadFile(fileId: string, userId: string): Promise<{ file: File; buffer: Buffer }> {
     const file = await this.getFileById(fileId, userId);
-    
+
     if (!file) {
       throw new Error('File not found');
     }
@@ -192,7 +274,7 @@ class FileService {
    */
   async renameFile(fileId: string, newName: string, userId: string): Promise<File> {
     const file = await this.getFileById(fileId, userId);
-    
+
     if (!file) {
       throw new Error('File not found');
     }
@@ -225,7 +307,7 @@ class FileService {
    */
   async moveFile(fileId: string, targetFolderId: string | null, userId: string): Promise<File> {
     const file = await this.getFileById(fileId, userId);
-    
+
     if (!file) {
       throw new Error('File not found');
     }
@@ -235,7 +317,7 @@ class FileService {
       const targetFolder = await Folder.findOne({
         where: { id: targetFolderId, userId, isDeleted: false },
       });
-      
+
       if (!targetFolder) {
         throw new Error('Target folder not found');
       }
@@ -269,7 +351,7 @@ class FileService {
    */
   async deleteFile(fileId: string, userId: string): Promise<void> {
     const file = await this.getFileById(fileId, userId);
-    
+
     if (!file) {
       throw new Error('File not found');
     }
@@ -296,7 +378,7 @@ class FileService {
     const file = await File.findOne({
       where: { id: fileId, userId },
     });
-    
+
     if (!file) {
       throw new Error('File not found');
     }
@@ -403,10 +485,10 @@ class FileService {
    */
   async getPublicFile(shareToken: string): Promise<File> {
     const file = await File.findOne({
-      where: { 
-        shareToken, 
-        isPublic: true, 
-        isDeleted: false 
+      where: {
+        shareToken,
+        isPublic: true,
+        isDeleted: false
       },
     });
 
@@ -446,6 +528,92 @@ class FileService {
     const shareLink = `${baseUrl}/api/public/files/${file.shareToken}`;
 
     return { shareLink, shareToken: file.shareToken };
+  }
+
+
+  /**
+   * Get file versions
+   */
+  async getVersions(fileId: string, userId: string): Promise<FileVersion[]> {
+    const file = await this.getFileById(fileId, userId);
+
+    if (!file) {
+      throw new Error('File not found');
+    }
+
+    return await FileVersion.findAll({
+      where: { fileId },
+      order: [['versionNumber', 'DESC']],
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
+    });
+  }
+
+  /**
+   * Restore file version
+   */
+  async restoreVersion(fileId: string, versionId: string, userId: string): Promise<File> {
+    const file = await this.getFileById(fileId, userId);
+
+    if (!file) {
+      throw new Error('File not found');
+    }
+
+    const version = await FileVersion.findOne({
+      where: { id: versionId, fileId },
+    });
+
+    if (!version) {
+      throw new Error('Version not found');
+    }
+
+    // Create a new version for the CURRENT state before restoring
+    await FileVersion.create({
+      fileId: file.id,
+      versionNumber: file.currentVersion,
+      path: file.path,
+      size: file.size,
+      mimeType: file.mimeType,
+      createdBy: userId,
+    });
+
+    // Update file to point to the restored version's path
+    // Note: We are NOT copying the file content, just pointing to the old path.
+    // This means if we delete the version later, we might break the file if we are not careful.
+    // But for now, we assume paths are immutable in storage.
+
+    // Wait, if we restore, we should probably COPY the content to a new path so it becomes the "latest" 
+    // and independent of the version record?
+    // Or just point to it. If we point to it, we must ensure we don't delete the file when deleting the version record.
+    // Let's copy it to be safe and treat it as a "new" upload of the old content.
+
+    const versionBuffer = await storageService.readFile(version.path);
+    const newPath = await storageService.saveFile(userId, versionBuffer, file.name);
+
+    file.path = newPath;
+    file.size = version.size;
+    file.mimeType = version.mimeType;
+    file.currentVersion = file.currentVersion + 1;
+
+    // We might want to regenerate thumbnail if it's an image/video
+    // For now, let's clear it or try to find if the version had one (we don't store version thumbnails yet)
+    file.thumbnailPath = null;
+
+    await file.save();
+
+    await logger.info('File version restored', {
+      userId,
+      fileId: file.id,
+      restoredFromVersion: version.versionNumber,
+      newVersion: file.currentVersion,
+    });
+
+    return file;
   }
 }
 

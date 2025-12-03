@@ -1,7 +1,12 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { IStorageProvider } from './IStorageProvider.js';
 import { logger } from '../utils/logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * LocalStorageProvider
@@ -12,7 +17,14 @@ export class LocalStorageProvider implements IStorageProvider {
 
   constructor() {
     // Base path for file storage: backend/data/files
-    this.baseStoragePath = path.join(process.cwd(), 'data', 'files');
+    // Resolve relative to this file: src/storage/LocalStorageProvider.ts -> ../../data/files
+    this.baseStoragePath = path.resolve(__dirname, '../../data/files');
+    
+    logger.info('LocalStorageProvider initialized', { 
+      cwd: process.cwd(), 
+      dirname: __dirname,
+      baseStoragePath: this.baseStoragePath 
+    });
   }
 
   /**
@@ -76,6 +88,7 @@ export class LocalStorageProvider implements IStorageProvider {
    */
   async readFile(relativePath: string): Promise<Buffer> {
     const absolutePath = this.getAbsolutePath(relativePath);
+    logger.info('Reading file', { relativePath, absolutePath });
     return await fs.readFile(absolutePath);
   }
 

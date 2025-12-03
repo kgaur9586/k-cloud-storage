@@ -17,6 +17,7 @@ class File extends Model<InferAttributes<File>, InferCreationAttributes<File>> {
   declare isPublic: CreationOptional<boolean>;
   declare shareToken: CreationOptional<string | null>;
   declare publicAccessCount: CreationOptional<number>;
+  declare currentVersion: CreationOptional<number>;
   declare isDeleted: CreationOptional<boolean>;
   declare deletedAt: CreationOptional<Date | null>;
   declare createdAt: CreationOptional<Date>;
@@ -58,26 +59,26 @@ class File extends Model<InferAttributes<File>, InferCreationAttributes<File>> {
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = this.size;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(2)} ${units[unitIndex]}`;
   }
 
   toJSON(): any {
     const values = { ...this.get() };
-    
+
     // Convert Dates to ISO strings
     if (values.createdAt instanceof Date) values.createdAt = values.createdAt.toISOString() as any;
     if (values.updatedAt instanceof Date) values.updatedAt = values.updatedAt.toISOString() as any;
     if (values.deletedAt instanceof Date) values.deletedAt = values.deletedAt.toISOString() as any;
-    
+
     // Convert BIGINT size to number (PostgreSQL returns BIGINT as string)
     if (typeof values.size === 'string') values.size = parseInt(values.size, 10) as any;
-    
+
     return values;
   }
 }
@@ -171,6 +172,12 @@ File.init({
     defaultValue: 0,
     field: 'public_access_count',
     comment: 'Number of times file was accessed publicly',
+  },
+  currentVersion: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+    field: 'current_version',
+    comment: 'Current version number',
   },
   isDeleted: {
     type: DataTypes.BOOLEAN,

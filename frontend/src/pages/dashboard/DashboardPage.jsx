@@ -14,11 +14,18 @@ import authService from '../../services/authService';
 import { toast } from 'react-toastify';
 import CloudIcon from '@mui/icons-material/Cloud';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import DeleteIcon from '@mui/icons-material/Delete';
+import {
+    Dashboard as DashboardIcon,
+    Folder as FolderIcon,
+    Settings as SettingsIcon,
+    Delete as DeleteIcon,
+    PhotoLibrary as PhotoLibraryIcon,
+    BarChart as BarChartIcon // Re-added BarChartIcon as it's used
+} from '@mui/icons-material';
 import FileManager from '../../components/files/FileManager';
 import StorageAnalytics from '../../components/analytics/StorageAnalytics';
 import TrashBin from '../../components/trash/TrashBin';
+import MediaGallery from '../../components/media/MediaGallery';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
 
 /**
@@ -30,7 +37,7 @@ export function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [partialUser, setPartialUser] = useState(null);
-    const [currentTab, setCurrentTab] = useState(0);
+    const [currentTab, setCurrentTab] = useState('analytics');
 
     const effectRan = useRef(false);
 
@@ -90,16 +97,25 @@ export function DashboardPage() {
                             <Tab
                                 icon={<InsertDriveFileIcon />}
                                 label="Files"
+                                value="files" // Added value prop
+                                iconPosition="start"
+                            />
+                            <Tab
+                                icon={<PhotoLibraryIcon />} // Added icon
+                                label="Media"
+                                value="media" // Added value prop
                                 iconPosition="start"
                             />
                             <Tab
                                 icon={<BarChartIcon />}
                                 label="Analytics"
+                                value="analytics" // Added value prop
                                 iconPosition="start"
                             />
                             <Tab
                                 icon={<DeleteIcon />}
                                 label="Trash"
+                                value="trash" // Added value prop
                                 iconPosition="start"
                             />
                         </Tabs>
@@ -109,13 +125,14 @@ export function DashboardPage() {
 
             {/* Content */}
             <ErrorBoundary>
-                {currentTab === 0 && <FileManager />}
-                {currentTab === 1 && (
+                {currentTab === 'files' && <FileManager />}
+                {currentTab === 'media' && <MediaGallery />}
+                {currentTab === 'analytics' && (
                     <Container maxWidth="xl" sx={{ py: 3 }}>
                         <StorageAnalytics />
                     </Container>
                 )}
-                {currentTab === 2 && (
+                {currentTab === 'trash' && (
                     <Container maxWidth="xl" sx={{ py: 3 }}>
                         <TrashBin />
                     </Container>
