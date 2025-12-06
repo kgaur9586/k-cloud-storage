@@ -143,20 +143,28 @@ export function DashboardPage() {
 
             {/* Content */}
             <ErrorBoundary>
-                {currentTab === 'files' && <FileManager />}
-                {currentTab === 'media' && <MediaGallery />}
-                {currentTab === 'my-shares' && <MyShares />}
-                {currentTab === 'shared-with-me' && <SharedWithMe />}
-                {currentTab === 'analytics' && (
+                <Box sx={{ display: currentTab === 'files' ? 'block' : 'none' }}>
+                    <FileManager />
+                </Box>
+                <Box sx={{ display: currentTab === 'media' ? 'block' : 'none' }}>
+                    <MediaGallery />
+                </Box>
+                <Box sx={{ display: currentTab === 'my-shares' ? 'block' : 'none' }}>
+                    <MyShares />
+                </Box>
+                <Box sx={{ display: currentTab === 'shared-with-me' ? 'block' : 'none' }}>
+                    <SharedWithMe />
+                </Box>
+                <Box sx={{ display: currentTab === 'analytics' ? 'block' : 'none' }}>
                     <Container maxWidth="xl" sx={{ py: 3 }}>
                         <StorageAnalytics />
                     </Container>
-                )}
-                {currentTab === 'trash' && (
+                </Box>
+                <Box sx={{ display: currentTab === 'trash' ? 'block' : 'none' }}>
                     <Container maxWidth="xl" sx={{ py: 3 }}>
                         <TrashBin />
                     </Container>
-                )}
+                </Box>
             </ErrorBoundary>
         </Box>
     );

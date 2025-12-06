@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { Box, Container, Paper, CircularProgress } from '@mui/material';
 import { toast } from 'react-toastify';
 import fileService from '../../services/fileService';
@@ -14,23 +15,29 @@ import SelectionToolbar from './SelectionToolbar';
 import MoveDialog from './MoveDialog';
 import CopyDialog from './CopyDialog';
 import useSelection from '../../hooks/useSelection';
+import { setFiles, addFiles, removeFile, updateFile, setCurrentFolderId, setLoading as setFilesLoading } from '../../store/slices/filesSlice';
+import { setFolders, addFolder, removeFolder, updateFolder, setCurrentPath } from '../../store/slices/foldersSlice';
+import { setViewMode, setSortBy, setSortOrder } from '../../store/slices/uiSlice';
 
 /**
  * FileManager Component
  * Main container for file management functionality
  */
 export default function FileManager() {
-    // State
-    const [currentFolderId, setCurrentFolderId] = useState(null);
-    const [files, setFiles] = useState([]);
-    const [folders, setFolders] = useState([]);
+    // Redux state
+    const dispatch = useDispatch();
+    const files = useSelector(state => state.files.items);
+    const folders = useSelector(state => state.folders.items);
+    const currentFolderId = useSelector(state => state.files.currentFolderId);
+    const viewMode = useSelector(state => state.ui.viewMode);
+    const sortBy = useSelector(state => state.ui.sortBy);
+    const sortOrder = useSelector(state => state.ui.sortOrder);
+    const loading = useSelector(state => state.files.loading);
+    const breadcrumbPath = useSelector(state => state.folders.currentPath);
+
+    // Local state (UI-specific, doesn't need Redux)
     const [folderTree, setFolderTree] = useState([]);
-    const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
-    const [sortBy, setSortBy] = useState('name');
-    const [sortOrder, setSortOrder] = useState('asc');
-    const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
-    const [breadcrumbPath, setBreadcrumbPath] = useState([]);
     const [previewFile, setPreviewFile] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -57,20 +64,26 @@ export default function FileManager() {
                 console.error('Failed to load folder tree:', error);
             }
 
+            // Check if we already have data in Redux (from previous navigation)
+            if (files.length > 0 || folders.length > 0) {
+                console.log('📦 Using cached data from Redux');
+                return; // Skip API call, use cached data
+            }
+
             try {
-                setLoading(true);
+                dispatch(setFilesLoading(true));
                 const [filesData, foldersData] = await Promise.all([
                     fileService.listFiles(null, { sortBy: 'name', sortOrder: 'asc' }),
                     folderService.listFolders(null),
                 ]);
 
-                setFiles(filesData.files || []);
-                setFolders(foldersData.folders || []);
+                dispatch(setFiles(filesData.files || []));
+                dispatch(setFolders(foldersData.folders || []));
             } catch (error) {
                 console.error('Failed to load data:', error);
                 toast.error('Failed to load files and folders');
             } finally {
-                setLoading(false);
+                dispatch(setFilesLoading(false));
             }
         };
 
@@ -83,14 +96,14 @@ export default function FileManager() {
 
         const reloadData = async () => {
             try {
-                setLoading(true);
+                dispatch(setFilesLoading(true));
                 const [filesData, foldersData] = await Promise.all([
                     fileService.listFiles(currentFolderId, { sortBy, sortOrder, search: searchQuery }),
                     folderService.listFolders(currentFolderId, searchQuery),
                 ]);
 
-                setFiles(filesData.files || []);
-                setFolders(foldersData.folders || []);
+                dispatch(setFiles(filesData.files || []));
+                dispatch(setFolders(foldersData.folders || []));
 
                 // Build breadcrumb
                 if (currentFolderId && !searchQuery) {
@@ -102,20 +115,20 @@ export default function FileManager() {
                             name,
                             path: '/' + pathParts.slice(0, index + 1).join('/'),
                         }));
-                        setBreadcrumbPath(breadcrumbs);
+                        dispatch(setCurrentPath(breadcrumbs));
                     } catch (error) {
                         console.error('Failed to build breadcrumb:', error);
                     }
                 } else if (searchQuery) {
-                    setBreadcrumbPath([{ name: 'Search Results', path: null }]);
+                    dispatch(setCurrentPath([{ name: 'Search Results', path: null }]));
                 } else {
-                    setBreadcrumbPath([]);
+                    dispatch(setCurrentPath([]));
                 }
             } catch (error) {
                 console.error('Failed to load data:', error);
                 toast.error('Failed to load files and folders');
             } finally {
-                setLoading(false);
+                dispatch(setFilesLoading(false));
             }
         };
 
@@ -130,18 +143,18 @@ export default function FileManager() {
     // Helper function to reload data (for use in handlers)
     const reloadCurrentData = async () => {
         try {
-            setLoading(true);
+            dispatch(setFilesLoading(true));
             const [filesData, foldersData] = await Promise.all([
                 fileService.listFiles(currentFolderId, { sortBy, sortOrder, search: searchQuery }),
                 folderService.listFolders(currentFolderId, searchQuery),
             ]);
-            setFiles(filesData.files || []);
-            setFolders(foldersData.folders || []);
+            dispatch(setFiles(filesData.files || []));
+            dispatch(setFolders(foldersData.folders || []));
         } catch (error) {
             console.error('Failed to reload data:', error);
             toast.error('Failed to reload files and folders');
         } finally {
-            setLoading(false);
+            dispatch(setFilesLoading(false));
         }
     };
 
@@ -163,14 +176,23 @@ export default function FileManager() {
             setUploading(true);
             const result = await fileService.uploadFiles(uploadedFiles, currentFolderId);
 
+            console.log('Upload result:', result); // Debug log
+
             toast.success(`${result.successCount} file(s) uploaded successfully`);
 
             if (result.failedCount > 0) {
                 toast.warning(`${result.failedCount} file(s) failed to upload`);
             }
 
-            // Reload data
-            await reloadCurrentData();
+            // Optimized: Add uploaded files to Redux instead of reloading everything
+            if (result.files && result.files.length > 0) {
+                dispatch(addFiles(result.files));
+                console.log('⚡ Optimistic update: Added files to Redux without API call', result.files);
+            } else {
+                // Fallback: If files not in result, reload data
+                console.warn('Files not in upload result, reloading data...');
+                await reloadCurrentData();
+            }
         } catch (error) {
             console.error('Upload failed:', error);
             toast.error('Failed to upload files');
@@ -183,7 +205,7 @@ export default function FileManager() {
      * Handle folder navigation
      */
     const handleNavigate = (folderId) => {
-        setCurrentFolderId(folderId);
+        dispatch(setCurrentFolderId(folderId));
         selection.clearSelection();
         setSearchQuery(''); // Clear search on navigation
     };
@@ -193,10 +215,12 @@ export default function FileManager() {
      */
     const handleCreateFolder = async (name) => {
         try {
-            await folderService.createFolder(name, currentFolderId);
+            const newFolder = await folderService.createFolder(name, currentFolderId);
             toast.success('Folder created successfully');
-            await reloadCurrentData();
+            // Optimized: Add folder to Redux instead of reloading
+            dispatch(addFolder(newFolder));
             await reloadFolderTree();
+            console.log('⚡ Optimistic update: Added folder to Redux');
         } catch (error) {
             console.error('Failed to create folder:', error);
             toast.error(error.response?.data?.message || 'Failed to create folder');
@@ -226,12 +250,17 @@ export default function FileManager() {
         try {
             if (type === 'file') {
                 await fileService.deleteFile(item.id);
+                // Optimized: Remove from Redux instead of reloading
+                dispatch(removeFile(item.id));
+                console.log('⚡ Optimistic update: Removed file from Redux');
             } else {
                 await folderService.deleteFolder(item.id);
+                // Optimized: Remove from Redux instead of reloading
+                dispatch(removeFolder(item.id));
+                console.log('⚡ Optimistic update: Removed folder from Redux');
             }
 
             toast.success(`${type === 'file' ? 'File' : 'Folder'} deleted successfully`);
-            await reloadCurrentData();
             await reloadFolderTree();
         } catch (error) {
             console.error('Failed to delete:', error);
@@ -258,10 +287,20 @@ export default function FileManager() {
             });
 
             await Promise.all(deletePromises);
+
+            // Optimized: Remove items from Redux instead of reloading
+            const fileIds = selectedItems.filter(item => item.type === 'file').map(item => item.id);
+            const folderIds = selectedItems.filter(item => item.type === 'folder').map(item => item.id);
+
+            if (fileIds.length > 0) {
+                dispatch(removeFiles(fileIds));
+            }
+            folderIds.forEach(id => dispatch(removeFolder(id)));
+
             toast.success('Selected items deleted successfully');
             selection.clearSelection();
-            await reloadCurrentData();
             await reloadFolderTree();
+            console.log('⚡ Optimistic update: Removed items from Redux');
         } catch (error) {
             console.error('Failed to delete items:', error);
             toast.error('Failed to delete some items');
@@ -315,9 +354,7 @@ export default function FileManager() {
     };
 
     const handleShareUpdate = (updatedFile) => {
-        setFiles(prevFiles =>
-            prevFiles.map(f => f.id === updatedFile.id ? updatedFile : f)
-        );
+        dispatch(updateFile(updatedFile));
     };
 
     /**
@@ -333,12 +370,12 @@ export default function FileManager() {
                 {/* Toolbar */}
                 <FileToolbar
                     viewMode={viewMode}
-                    onViewModeChange={setViewMode}
+                    onViewModeChange={(mode) => dispatch(setViewMode(mode))}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSortChange={(field, order) => {
-                        setSortBy(field);
-                        setSortOrder(order);
+                        dispatch(setSortBy(field));
+                        dispatch(setSortOrder(order));
                     }}
                     onCreateFolder={handleCreateFolder}
                     selectedCount={selection.selectedCount}

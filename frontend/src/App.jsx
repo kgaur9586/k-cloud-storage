@@ -13,6 +13,8 @@ import MyShares from './pages/MyShares';
 import ShareAccessPage from './pages/ShareAccessPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { setAccessToken } from './services/api';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
 
 /**
  * Material-UI theme configuration
@@ -121,59 +123,61 @@ function App() {
   }
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/callback" element={<CallbackPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
         />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <SettingsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/shared-with-me"
-          element={
-            <ProtectedRoute>
-              <SharedWithMe />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/my-shares"
-          element={
-            <ProtectedRoute>
-              <MyShares />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/share/:token" element={<ShareAccessPage />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </ThemeProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/callback" element={<CallbackPage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/shared-with-me"
+            element={
+              <ProtectedRoute>
+                <SharedWithMe />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-shares"
+            element={
+              <ProtectedRoute>
+                <MyShares />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/share/:token" element={<ShareAccessPage />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </ThemeProvider>
+    </Provider>
   );
 }
 
