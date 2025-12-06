@@ -32,9 +32,15 @@ importers:
       '@types/fluent-ffmpeg':
         specifier: ^2.1.28
         version: 2.1.28
+      '@types/ioredis':
+        specifier: ^5.0.0
+        version: 5.0.0
       bull:
         specifier: ^4.16.5
         version: 4.16.5
+      bullmq:
+        specifier: ^5.65.1
+        version: 5.65.1
       cors:
         specifier: ^2.8.5
         version: 2.8.5
@@ -53,6 +59,9 @@ importers:
       helmet:
         specifier: ^8.1.0
         version: 8.1.0
+      ioredis:
+        specifier: ^5.8.2
+        version: 5.8.2
       joi:
         specifier: ^18.0.2
         version: 18.0.2
@@ -2331,6 +2340,10 @@ packages:
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
+  '@types/ioredis@5.0.0':
+    resolution: {integrity: sha512-zJbJ3FVE17CNl5KXzdeSPtdltc4tMT3TzC6fxQS0sQngkbFZ6h+0uTafsRqu+eSLIugf6Yb0Ea0SUuRr42Nk9g==}
+    deprecated: This is a stub types definition. ioredis provides its own type definitions, so you do not need this installed.
+
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
 
@@ -2768,6 +2781,9 @@ packages:
   bull@4.16.5:
     resolution: {integrity: sha512-lDsx2BzkKe7gkCYiT5Acj02DpTwDznl/VNN7Psn7M3USPG7Vs/BaClZJJTAG+ufAR9++N1/NiUTdaFBWDIl5TQ==}
     engines: {node: '>=12'}
+
+  bullmq@5.65.1:
+    resolution: {integrity: sha512-QgDAzX1G9L5IRy4Orva5CfQTXZT+5K+OfO/kbPrAqN+pmL9LJekCzxijXehlm/u2eXfWPfWvIdJJIqiuz3WJSg==}
 
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
@@ -4050,6 +4066,9 @@ packages:
 
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
+
+  node-abort-controller@3.1.1:
+    resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
 
   node-gyp-build-optional-packages@5.2.2:
     resolution: {integrity: sha512-s+w+rBWnpTMwSFbaE0UXsRlg7hU4FjekKU4eyAih5T8nJuNZT1nNsskXpxmeqSK9UzkBl6UgRlnKc8hz8IEqOw==}
@@ -7851,6 +7870,12 @@ snapshots:
 
   '@types/http-errors@2.0.5': {}
 
+  '@types/ioredis@5.0.0':
+    dependencies:
+      ioredis: 5.8.2
+    transitivePeerDependencies:
+      - supports-color
+
   '@types/istanbul-lib-coverage@2.0.6': {}
 
   '@types/istanbul-lib-report@3.0.3':
@@ -8319,6 +8344,18 @@ snapshots:
       msgpackr: 1.11.5
       semver: 7.7.3
       uuid: 8.3.2
+    transitivePeerDependencies:
+      - supports-color
+
+  bullmq@5.65.1:
+    dependencies:
+      cron-parser: 4.9.0
+      ioredis: 5.8.2
+      msgpackr: 1.11.5
+      node-abort-controller: 3.1.1
+      semver: 7.7.3
+      tslib: 2.8.1
+      uuid: 11.1.0
     transitivePeerDependencies:
       - supports-color
 
@@ -9797,6 +9834,8 @@ snapshots:
   negotiator@1.0.0: {}
 
   neo-async@2.6.2: {}
+
+  node-abort-controller@3.1.1: {}
 
   node-gyp-build-optional-packages@5.2.2:
     dependencies:

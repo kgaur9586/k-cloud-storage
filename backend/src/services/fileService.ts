@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import storageService from './storageService.js';
 import { logger } from '../utils/logger.js';
 import { Op } from 'sequelize';
+import queueService from './queue/queueService.js';
 
 /**
  * FileService
@@ -67,66 +68,8 @@ class FileService {
     let metadata: Record<string, any> | null = null;
     let thumbnailPath: string | null = null;
 
-    // Process images: generate thumbnail and extract metadata
-    if (mimeType.startsWith('image/')) {
-      try {
-        const mediaService = (await import('./mediaService.js')).default;
-
-        // Extract image metadata
-        const imageMetadata = await mediaService.getImageMetadata(fileBuffer);
-        metadata = imageMetadata;
-
-        // Generate thumbnail
-        const thumbnailRelativePath = mediaService.generateThumbnailPath(relativePath);
-        const thumbnailAbsolutePath = await storageService.getAbsolutePath(thumbnailRelativePath);
-
-        // Ensure thumbnail directory exists
-        await mediaService.ensureThumbnailDir(thumbnailAbsolutePath);
-
-        // Generate and save thumbnail
-        await mediaService.generateImageThumbnail(fileBuffer, thumbnailAbsolutePath, 'medium');
-        thumbnailPath = thumbnailRelativePath;
-
-        await logger.info('Thumbnail generated for image', { fileId: originalName, thumbnailPath });
-      } catch (error) {
-        await logger.error('Failed to process image', { error, filename: originalName });
-        // Continue without thumbnail if generation fails
-      }
-    }
-
-    console.log('FILE UPLOAD - mimeType:', mimeType, 'isVideo:', mimeType.startsWith('video/'));
-
-    // Process videos: generate thumbnail and extract metadata
-    if (mimeType.startsWith('video/')) {
-      console.log('STARTING VIDEO PROCESSING for:', originalName);
-      try {
-        const mediaService = (await import('./mediaService.js')).default;
-
-        // Get absolute path of the uploaded video
-        const videoAbsolutePath = await storageService.getAbsolutePath(relativePath);
-
-        // Extract video metadata
-        const videoMetadata = await mediaService.getVideoMetadata(videoAbsolutePath);
-        metadata = videoMetadata;
-
-        // Generate thumbnail
-        const thumbnailRelativePath = mediaService.generateThumbnailPath(relativePath);
-        const thumbnailAbsolutePath = await storageService.getAbsolutePath(thumbnailRelativePath);
-
-        // Ensure thumbnail directory exists
-        await mediaService.ensureThumbnailDir(thumbnailAbsolutePath);
-
-        // Generate and save thumbnail
-        await mediaService.generateVideoThumbnail(videoAbsolutePath, thumbnailAbsolutePath, 'medium');
-        thumbnailPath = thumbnailRelativePath;
-
-        await logger.info('Thumbnail generated for video', { fileId: originalName, thumbnailPath });
-      } catch (error) {
-        console.error('VIDEO PROCESSING ERROR:', error);
-        await logger.error('Failed to process video', { error, filename: originalName });
-        // Continue without thumbnail if generation fails
-      }
-    }
+    // NOTE: Media processing is now handled by the background worker
+    // We just save the file and trigger the job
 
     if (existingFile) {
       // Create version for current state
@@ -144,11 +87,22 @@ class FileService {
       existingFile.path = relativePath;
       existingFile.mimeType = mimeType;
       existingFile.hash = hash;
-      existingFile.thumbnailPath = thumbnailPath;
-      existingFile.metadata = metadata;
+      existingFile.thumbnailPath = null; // Reset thumbnail, will be regenerated
+      existingFile.metadata = null; // Reset metadata
       existingFile.currentVersion = (existingFile.currentVersion || 1) + 1;
 
       await existingFile.save();
+
+      // Trigger background processing
+      if (mimeType.startsWith('image/') || mimeType.startsWith('video/')) {
+        await queueService.addThumbnailJob({
+          fileId: existingFile.id,
+          userId,
+          path: relativePath,
+          mimeType,
+          originalName,
+        });
+      }
 
       await logger.info('File version updated', {
         userId,
@@ -170,10 +124,27 @@ class FileService {
       size: fileSize,
       path: relativePath,
       hash,
-      thumbnailPath,
-      metadata,
+      thumbnailPath: null,
+      metadata: null,
       currentVersion: 1,
     });
+
+    // Trigger background processing
+    if (mimeType.startsWith('image/') || mimeType.startsWith('video/')) {
+      await queueService.addThumbnailJob({
+        fileId: file.id,
+        userId,
+        path: relativePath,
+        mimeType,
+        originalName,
+      });
+    } else {
+      await logger.info('Skipping background processing for file type', {
+        fileId: file.id,
+        mimeType,
+        filename: originalName,
+      });
+    }
 
     // Update user storage usage
     user.storageUsed = Number(user.storageUsed) + fileSize;
@@ -185,7 +156,7 @@ class FileService {
       filename: originalName,
       size: fileSize,
       mimeType,
-      hasThumbnail: !!thumbnailPath,
+      hasThumbnail: false, // Will be generated in background
     });
 
     return file;

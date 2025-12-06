@@ -11,6 +11,7 @@ import publicRoutes from './src/routes/publicRoutes.js';
 import analyticsRoutes from './src/routes/analytics.routes.js';
 import trashRoutes from './src/routes/trash.routes.js';
 import versionRoutes from './src/routes/version.routes.js';
+import queueRoutes from './src/routes/queue.routes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { apiLimiter } from './src/middleware/rateLimiter.js';
 import { setupSwagger } from './src/config/swagger.js';
@@ -97,6 +98,7 @@ app.use('/api/folders', folderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/trash', trashRoutes);
 app.use('/api/files', versionRoutes); // Mount version routes also under /api/files to match the path structure
+app.use('/api/queue', queueRoutes); // Queue monitoring routes
 
 // 404 handler
 app.use(notFoundHandler);
@@ -107,6 +109,9 @@ app.use(errorHandler);
 /**
  * Start server and initialize database
  */
+import workerService from './src/services/queue/workerService.js';
+import queueService from './src/services/queue/queueService.js';
+
 async function startServer() {
   try {
     // Test database connection
@@ -126,6 +131,10 @@ async function startServer() {
       console.log('✅ Database models synchronized');
       await logger.info('Database models synchronized');
     }
+
+    // Worker service is initialized on import
+    console.log('✅ Worker service initialized');
+    await logger.info('Worker service initialized');
 
     // Start HTTP server
     app.listen(PORT, () => {
@@ -154,6 +163,8 @@ async function startServer() {
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
   await logger.info('Server shutting down');
+  await workerService.close();
+  await queueService.close();
   await sequelize.close();
   process.exit(0);
 });
@@ -161,6 +172,8 @@ process.on('SIGTERM', async () => {
 process.on('SIGINT', async () => {
   console.log('\nSIGINT received, shutting down gracefully...');
   await logger.info('Server shutting down');
+  await workerService.close();
+  await queueService.close();
   await sequelize.close();
   process.exit(0);
 });

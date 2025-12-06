@@ -7,6 +7,10 @@ import { logger } from '../utils/logger.js';
 const require = createRequire(import.meta.url);
 const ffmpeg = require('fluent-ffmpeg');
 
+// Configure ffmpeg paths explicitly
+ffmpeg.setFfmpegPath('/usr/bin/ffmpeg');
+ffmpeg.setFfprobePath('/usr/bin/ffprobe');
+
 /**
  * Media Processing Service
  * Handles thumbnail generation and image/video optimization

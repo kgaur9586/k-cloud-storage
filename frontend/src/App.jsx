@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { LoginPage } from './pages/auth/LoginPage';
 import { CallbackPage } from './pages/auth/CallbackPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
+import SettingsPage from './pages/settings/SettingsPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { setAccessToken } from './services/api';
 
@@ -138,6 +139,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />
