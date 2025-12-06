@@ -33,7 +33,7 @@ import { formatFileSize, getFileIcon } from '../../utils/fileUtils';
  * TrashBin Component
  * Displays deleted files and folders with restore/permanent delete options
  */
-export default function TrashBin() {
+export default function TrashBin({ isVisible }) {
     const [loading, setLoading] = useState(true);
     const [files, setFiles] = useState([]);
     const [folders, setFolders] = useState([]);
@@ -42,6 +42,13 @@ export default function TrashBin() {
     useEffect(() => {
         loadTrashItems();
     }, []);
+
+    // Reload when tab becomes visible
+    useEffect(() => {
+        if (isVisible) {
+            loadTrashItems();
+        }
+    }, [isVisible]);
 
     const loadTrashItems = async () => {
         try {

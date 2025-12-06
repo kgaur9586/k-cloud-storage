@@ -7,6 +7,12 @@ const initialState = {
     loading: false,
     error: null,
     cache: {}, // { [folderId]: { data: [], timestamp: number } }
+    pagination: {
+        page: 1,
+        limit: 50,
+        total: 0,
+        hasMore: true,
+    },
 };
 
 const filesSlice = createSlice({
@@ -89,6 +95,22 @@ const filesSlice = createSlice({
         clearCache: (state) => {
             state.cache = {};
         },
+        // Pagination actions
+        appendFiles: (state, action) => {
+            // Add files without replacing existing ones (for infinite scroll)
+            state.items.push(...action.payload);
+        },
+        setPagination: (state, action) => {
+            state.pagination = { ...state.pagination, ...action.payload };
+        },
+        resetPagination: (state) => {
+            state.pagination = {
+                page: 1,
+                limit: 50,
+                total: 0,
+                hasMore: true,
+            };
+        },
     },
 });
 
@@ -110,6 +132,9 @@ export const {
     cacheFiles,
     invalidateCache,
     clearCache,
+    appendFiles,
+    setPagination,
+    resetPagination,
 } = filesSlice.actions;
 
 export default filesSlice.reducer;

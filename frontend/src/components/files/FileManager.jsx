@@ -15,7 +15,8 @@ import SelectionToolbar from './SelectionToolbar';
 import MoveDialog from './MoveDialog';
 import CopyDialog from './CopyDialog';
 import useSelection from '../../hooks/useSelection';
-import { setFiles, addFiles, removeFile, updateFile, setCurrentFolderId, setLoading as setFilesLoading } from '../../store/slices/filesSlice';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { setFiles, addFiles, removeFile, updateFile, setCurrentFolderId, setLoading as setFilesLoading, appendFiles, setPagination, resetPagination } from '../../store/slices/filesSlice';
 import { setFolders, addFolder, removeFolder, updateFolder, setCurrentPath } from '../../store/slices/foldersSlice';
 import { setViewMode, setSortBy, setSortOrder } from '../../store/slices/uiSlice';
 
@@ -34,6 +35,7 @@ export default function FileManager() {
     const sortOrder = useSelector(state => state.ui.sortOrder);
     const loading = useSelector(state => state.files.loading);
     const breadcrumbPath = useSelector(state => state.folders.currentPath);
+    const pagination = useSelector(state => state.files.pagination);
 
     // Local state (UI-specific, doesn't need Redux)
     const [folderTree, setFolderTree] = useState([]);
@@ -73,12 +75,21 @@ export default function FileManager() {
             try {
                 dispatch(setFilesLoading(true));
                 const [filesData, foldersData] = await Promise.all([
-                    fileService.listFiles(null, { sortBy: 'name', sortOrder: 'asc' }),
+                    fileService.listFiles(null, { sortBy: 'name', sortOrder: 'asc', page: 1, limit: 50 }),
                     folderService.listFolders(null),
                 ]);
 
                 dispatch(setFiles(filesData.files || []));
                 dispatch(setFolders(foldersData.folders || []));
+
+                // Set pagination info
+                if (filesData.pagination) {
+                    dispatch(setPagination({
+                        page: filesData.pagination.page,
+                        total: filesData.pagination.total,
+                        hasMore: filesData.pagination.page * filesData.pagination.limit < filesData.pagination.total,
+                    }));
+                }
             } catch (error) {
                 console.error('Failed to load data:', error);
                 toast.error('Failed to load files and folders');
@@ -92,18 +103,31 @@ export default function FileManager() {
 
     // Reload data when folder/sort/search changes
     useEffect(() => {
+        console.log('🔄 useEffect triggered:', { currentFolderId, sortBy, sortOrder, searchQuery });
         if (!initialLoadDone.current) return; // Skip on initial mount
 
         const reloadData = async () => {
+            // Reset pagination when folder/search changes
+            dispatch(resetPagination());
+
             try {
                 dispatch(setFilesLoading(true));
                 const [filesData, foldersData] = await Promise.all([
-                    fileService.listFiles(currentFolderId, { sortBy, sortOrder, search: searchQuery }),
+                    fileService.listFiles(currentFolderId, { sortBy, sortOrder, search: searchQuery, page: 1, limit: 50 }),
                     folderService.listFolders(currentFolderId, searchQuery),
                 ]);
 
                 dispatch(setFiles(filesData.files || []));
                 dispatch(setFolders(foldersData.folders || []));
+
+                // Set pagination info
+                if (filesData.pagination) {
+                    dispatch(setPagination({
+                        page: filesData.pagination.page,
+                        total: filesData.pagination.total,
+                        hasMore: filesData.pagination.page * filesData.pagination.limit < filesData.pagination.total,
+                    }));
+                }
 
                 // Build breadcrumb
                 if (currentFolderId && !searchQuery) {
@@ -167,6 +191,39 @@ export default function FileManager() {
             console.error('Failed to reload folder tree:', error);
         }
     };
+
+    /**
+     * Load more files for infinite scroll
+     */
+    const loadMoreFiles = async () => {
+        if (!pagination.hasMore || loading) return;
+
+        try {
+            const nextPage = pagination.page + 1;
+
+            const filesData = await fileService.listFiles(currentFolderId, {
+                sortBy,
+                sortOrder,
+                search: searchQuery,
+                page: nextPage,
+                limit: pagination.limit,
+            });
+
+            dispatch(appendFiles(filesData.files));
+            dispatch(setPagination({
+                page: nextPage,
+                total: filesData.pagination.total,
+                hasMore: filesData.pagination.page * filesData.pagination.limit < filesData.pagination.total,
+            }));
+
+            console.log(`📄 Loaded page ${nextPage}, total: ${filesData.pagination.total}`);
+        } catch (error) {
+            console.error('Failed to load more files:', error);
+        }
+    };
+
+    // Infinite scroll hook
+    const lastFileRef = useInfiniteScroll(loadMoreFiles, pagination.hasMore, loading);
 
     /**
      * Handle file upload
@@ -247,21 +304,29 @@ export default function FileManager() {
      * Handle item deletion
      */
     const handleDelete = async (item, type) => {
+        console.log('🗑️ Delete started:', type, item.id);
         try {
             if (type === 'file') {
+                console.log('🗑️ Calling deleteFile API...');
                 await fileService.deleteFile(item.id);
+                console.log('🗑️ API call complete, updating Redux...');
                 // Optimized: Remove from Redux instead of reloading
                 dispatch(removeFile(item.id));
                 console.log('⚡ Optimistic update: Removed file from Redux');
             } else {
+                console.log('🗑️ Calling deleteFolder API...');
                 await folderService.deleteFolder(item.id);
+                console.log('🗑️ API call complete, updating Redux...');
                 // Optimized: Remove from Redux instead of reloading
                 dispatch(removeFolder(item.id));
+                // Only reload folder tree when deleting folders
+                console.log('🗑️ Reloading folder tree...');
+                await reloadFolderTree();
                 console.log('⚡ Optimistic update: Removed folder from Redux');
             }
 
             toast.success(`${type === 'file' ? 'File' : 'Folder'} deleted successfully`);
-            await reloadFolderTree();
+            console.log('🗑️ Delete complete');
         } catch (error) {
             console.error('Failed to delete:', error);
             toast.error(error.response?.data?.message || 'Failed to delete');
@@ -299,7 +364,12 @@ export default function FileManager() {
 
             toast.success('Selected items deleted successfully');
             selection.clearSelection();
-            await reloadFolderTree();
+
+            // Only reload folder tree if folders were deleted
+            if (folderIds.length > 0) {
+                await reloadFolderTree();
+            }
+
             console.log('⚡ Optimistic update: Removed items from Redux');
         } catch (error) {
             console.error('Failed to delete items:', error);
@@ -441,7 +511,15 @@ export default function FileManager() {
                                     onRename={handleRename}
                                     onPreview={handlePreview}
                                     onShare={handleShare}
+                                    lastFileRef={lastFileRef}
                                 />
+
+                                {/* Loading indicator for pagination */}
+                                {loading && pagination.page > 1 && (
+                                    <Box display="flex" justifyContent="center" p={2}>
+                                        <CircularProgress size={24} />
+                                    </Box>
+                                )}
                             </>
                         )}
                     </Box>

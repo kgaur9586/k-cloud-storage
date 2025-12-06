@@ -18,6 +18,7 @@ export default function FileList({
     onRename,
     onPreview,
     onShare,
+    lastFileRef, // NEW: for infinite scroll
 }) {
     const hasItems = files.length > 0 || folders.length > 0;
 
@@ -63,20 +64,24 @@ export default function FileList({
                 ))}
 
                 {/* Then files */}
-                {files.map((file, index) => (
-                    <Grid item xs={12} sm={6} md={4} lg={3} key={`file-${file.id}`}>
-                        <FileCard
-                            item={file}
-                            type="file"
-                            selected={selectedItems.includes(file.id)}
-                            onSelect={(e) => onSelect(file, 'file', folders.length + index, e)}
-                            onDelete={() => onDelete(file, 'file')}
-                            onRename={(newName) => onRename(file, 'file', newName)}
-                            onPreview={() => onPreview(file)}
-                            onShare={() => onShare(file)}
-                        />
-                    </Grid>
-                ))}
+                {files.map((file, index) => {
+                    const isLastFile = index === files.length - 1;
+                    return (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={`file-${file.id}`}>
+                            <FileCard
+                                ref={isLastFile ? lastFileRef : null}
+                                item={file}
+                                type="file"
+                                selected={selectedItems.includes(file.id)}
+                                onSelect={(e) => onSelect(file, 'file', folders.length + index, e)}
+                                onDelete={() => onDelete(file, 'file')}
+                                onRename={(newName) => onRename(file, 'file', newName)}
+                                onPreview={() => onPreview(file)}
+                                onShare={() => onShare(file)}
+                            />
+                        </Grid>
+                    );
+                })}
             </Grid>
         );
     }

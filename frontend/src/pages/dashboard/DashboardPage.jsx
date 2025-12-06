@@ -162,7 +162,7 @@ export function DashboardPage() {
                 </Box>
                 <Box sx={{ display: currentTab === 'trash' ? 'block' : 'none' }}>
                     <Container maxWidth="xl" sx={{ py: 3 }}>
-                        <TrashBin />
+                        <TrashBin isVisible={currentTab === 'trash'} />
                     </Container>
                 </Box>
             </ErrorBoundary>
