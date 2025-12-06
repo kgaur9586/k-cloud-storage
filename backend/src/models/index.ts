@@ -3,6 +3,7 @@ import User from './User.js';
 import File from './File.js';
 import Folder from './Folder.js';
 import FileVersion from './FileVersion.js';
+import SharedLink from './SharedLink.js';
 
 /**
  * Models registry
@@ -13,6 +14,7 @@ const models = {
     File,
     Folder,
     FileVersion,
+    SharedLink,
 };
 
 /**
@@ -38,6 +40,12 @@ export const setupAssociations = () => {
     Folder.belongsTo(Folder, { foreignKey: 'parentId', as: 'parent' });
     Folder.hasMany(Folder, { foreignKey: 'parentId', as: 'children' });
     Folder.hasMany(File, { foreignKey: 'folderId', as: 'files' });
+
+    // SharedLink associations
+    SharedLink.belongsTo(User, { foreignKey: 'sharedBy', as: 'sharer' });
+    SharedLink.belongsTo(User, { foreignKey: 'sharedWith', as: 'recipient' });
+    SharedLink.belongsTo(File, { foreignKey: 'resourceId', constraints: false, as: 'file' });
+    SharedLink.belongsTo(Folder, { foreignKey: 'resourceId', constraints: false, as: 'folder' });
 };
 
 export { sequelize, models };

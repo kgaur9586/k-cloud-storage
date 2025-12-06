@@ -30,18 +30,20 @@ import {
     Description as DocIcon,
     InsertDriveFile as FileIcon,
     History,
-    Restore
+    Restore,
+    Visibility
 } from '@mui/icons-material';
 import mammoth from 'mammoth';
 import { format } from 'date-fns';
 import fileService from '../../services/fileService';
 import { getFileType, formatFileSize } from '../../utils/fileUtils';
+import { Chip } from '@mui/material';
 
 /**
  * FilePreviewModal Component
  * Displays file preview for supported types with metadata sidebar and version history
  */
-export default function FilePreviewModal({ file, open, onClose }) {
+export default function FilePreviewModal({ file, open, onClose, permission }) {
     const [loading, setLoading] = useState(false);
     const [contentUrl, setContentUrl] = useState(null);
     const [error, setError] = useState(null);
@@ -50,6 +52,9 @@ export default function FilePreviewModal({ file, open, onClose }) {
     const [showSidebar, setShowSidebar] = useState(true);
     const [versions, setVersions] = useState([]);
     const [loadingVersions, setLoadingVersions] = useState(false);
+
+    // Determine if user can download (owner or has download/edit permission)
+    const canDownload = !permission || permission === 'download' || permission === 'edit';
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -98,7 +103,12 @@ export default function FilePreviewModal({ file, open, onClose }) {
             }
         } catch (err) {
             console.error('Failed to load file preview:', err);
-            setError('Failed to load file preview');
+            // Check if it's a permission error
+            if (err.response?.status === 403) {
+                setError('View-only access - download not permitted');
+            } else {
+                setError('Failed to load file preview');
+            }
         } finally {
             setLoading(false);
         }
@@ -262,9 +272,15 @@ export default function FilePreviewModal({ file, open, onClose }) {
                         <Typography variant="h6" gutterBottom>
                             Preview not available
                         </Typography>
-                        <Button variant="contained" startIcon={<Download />} onClick={handleDownload}>
-                            Download to view
-                        </Button>
+                        {canDownload ? (
+                            <Button variant="contained" startIcon={<Download />} onClick={handleDownload}>
+                                Download to view
+                            </Button>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                View-only access - download not available
+                            </Typography>
+                        )}
                     </Box>
                 );
             default:
@@ -274,9 +290,15 @@ export default function FilePreviewModal({ file, open, onClose }) {
                         <Typography variant="h6" gutterBottom>
                             Preview not available
                         </Typography>
-                        <Button variant="contained" startIcon={<Download />} onClick={handleDownload}>
-                            Download to view
-                        </Button>
+                        {canDownload ? (
+                            <Button variant="contained" startIcon={<Download />} onClick={handleDownload}>
+                                Download to view
+                            </Button>
+                        ) : (
+                            <Typography variant="body2" color="text.secondary">
+                                View-only access - download not available
+                            </Typography>
+                        )}
                     </Box>
                 );
         }
@@ -303,10 +325,18 @@ export default function FilePreviewModal({ file, open, onClose }) {
                 bgcolor: 'background.paper',
                 zIndex: 1
             }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', overflow: 'hidden', gap: 1 }}>
                     <Typography variant="h6" component="div" noWrap title={file.name}>
                         {file.name}
                     </Typography>
+                    {permission === 'view' && (
+                        <Chip
+                            icon={<Visibility />}
+                            label="View Only"
+                            color="warning"
+                            size="small"
+                        />
+                    )}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                     <Tooltip title="Open in new tab">
@@ -314,11 +344,13 @@ export default function FilePreviewModal({ file, open, onClose }) {
                             <OpenInNew />
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title="Download">
-                        <IconButton onClick={handleDownload} size="small">
-                            <Download />
-                        </IconButton>
-                    </Tooltip>
+                    {canDownload && (
+                        <Tooltip title="Download">
+                            <IconButton onClick={handleDownload} size="small">
+                                <Download />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                     <Tooltip title="Share">
                         <IconButton onClick={handleShare} size="small">
                             <Share />
@@ -469,14 +501,16 @@ export default function FilePreviewModal({ file, open, onClose }) {
                                 Actions
                             </Typography>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<Download />}
-                                    onClick={handleDownload}
-                                    fullWidth
-                                >
-                                    Download
-                                </Button>
+                                {canDownload && (
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<Download />}
+                                        onClick={handleDownload}
+                                        fullWidth
+                                    >
+                                        Download
+                                    </Button>
+                                )}
                                 <Button
                                     variant="outlined"
                                     startIcon={<Share />}

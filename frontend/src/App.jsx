@@ -8,6 +8,9 @@ import { LoginPage } from './pages/auth/LoginPage';
 import { CallbackPage } from './pages/auth/CallbackPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import SettingsPage from './pages/settings/SettingsPage';
+import SharedWithMe from './pages/SharedWithMe';
+import MyShares from './pages/MyShares';
+import ShareAccessPage from './pages/ShareAccessPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { setAccessToken } from './services/api';
 
@@ -150,6 +153,23 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/shared-with-me"
+          element={
+            <ProtectedRoute>
+              <SharedWithMe />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-shares"
+          element={
+            <ProtectedRoute>
+              <MyShares />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/share/:token" element={<ShareAccessPage />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

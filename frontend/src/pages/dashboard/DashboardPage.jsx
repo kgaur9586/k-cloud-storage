@@ -27,6 +27,12 @@ import StorageAnalytics from '../../components/analytics/StorageAnalytics';
 import TrashBin from '../../components/trash/TrashBin';
 import MediaGallery from '../../components/media/MediaGallery';
 import ErrorBoundary from '../../components/common/ErrorBoundary';
+import MyShares from '../../pages/MyShares';
+import SharedWithMe from '../../pages/SharedWithMe';
+import {
+    Share as ShareIcon,
+    People as PeopleIcon,
+} from '@mui/icons-material';
 
 /**
  * Dashboard page
@@ -101,9 +107,21 @@ export function DashboardPage() {
                                 iconPosition="start"
                             />
                             <Tab
-                                icon={<PhotoLibraryIcon />} // Added icon
+                                icon={<PhotoLibraryIcon />}
                                 label="Media"
-                                value="media" // Added value prop
+                                value="media"
+                                iconPosition="start"
+                            />
+                            <Tab
+                                icon={<ShareIcon />}
+                                label="My Shares"
+                                value="my-shares"
+                                iconPosition="start"
+                            />
+                            <Tab
+                                icon={<PeopleIcon />}
+                                label="Shared with Me"
+                                value="shared-with-me"
                                 iconPosition="start"
                             />
                             <Tab
@@ -127,6 +145,8 @@ export function DashboardPage() {
             <ErrorBoundary>
                 {currentTab === 'files' && <FileManager />}
                 {currentTab === 'media' && <MediaGallery />}
+                {currentTab === 'my-shares' && <MyShares />}
+                {currentTab === 'shared-with-me' && <SharedWithMe />}
                 {currentTab === 'analytics' && (
                     <Container maxWidth="xl" sx={{ py: 3 }}>
                         <StorageAnalytics />

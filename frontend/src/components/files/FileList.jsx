@@ -48,13 +48,13 @@ export default function FileList({
         return (
             <Grid container spacing={2}>
                 {/* Folders first */}
-                {folders.map((folder) => (
+                {folders.map((folder, index) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={`folder-${folder.id}`}>
                         <FileCard
                             item={folder}
                             type="folder"
-                            selected={selectedItems.includes(`folder-${folder.id}`)}
-                            onSelect={() => onSelect(folder, 'folder')}
+                            selected={selectedItems.includes(folder.id)}
+                            onSelect={(e) => onSelect(folder, 'folder', index, e)}
                             onNavigate={() => onNavigate(folder.id)}
                             onDelete={() => onDelete(folder, 'folder')}
                             onRename={(newName) => onRename(folder, 'folder', newName)}
@@ -63,13 +63,13 @@ export default function FileList({
                 ))}
 
                 {/* Then files */}
-                {files.map((file) => (
+                {files.map((file, index) => (
                     <Grid item xs={12} sm={6} md={4} lg={3} key={`file-${file.id}`}>
                         <FileCard
                             item={file}
                             type="file"
-                            selected={selectedItems.includes(`file-${file.id}`)}
-                            onSelect={() => onSelect(file, 'file')}
+                            selected={selectedItems.includes(file.id)}
+                            onSelect={(e) => onSelect(file, 'file', folders.length + index, e)}
                             onDelete={() => onDelete(file, 'file')}
                             onRename={(newName) => onRename(file, 'file', newName)}
                             onPreview={() => onPreview(file)}
@@ -85,13 +85,13 @@ export default function FileList({
     return (
         <Box>
             {/* Folders first */}
-            {folders.map((folder) => (
+            {folders.map((folder, index) => (
                 <FileListItem
                     key={`folder-${folder.id}`}
                     item={folder}
                     type="folder"
-                    selected={selectedItems.includes(`folder-${folder.id}`)}
-                    onSelect={() => onSelect(folder, 'folder')}
+                    selected={selectedItems.includes(folder.id)}
+                    onSelect={(e) => onSelect(folder, 'folder', index, e)}
                     onNavigate={() => onNavigate(folder.id)}
                     onDelete={() => onDelete(folder, 'folder')}
                     onRename={(newName) => onRename(folder, 'folder', newName)}
@@ -99,13 +99,13 @@ export default function FileList({
             ))}
 
             {/* Then files */}
-            {files.map((file) => (
+            {files.map((file, index) => (
                 <FileListItem
                     key={`file-${file.id}`}
                     item={file}
                     type="file"
-                    selected={selectedItems.includes(`file-${file.id}`)}
-                    onSelect={() => onSelect(file, 'file')}
+                    selected={selectedItems.includes(file.id)}
+                    onSelect={(e) => onSelect(file, 'file', folders.length + index, e)}
                     onDelete={() => onDelete(file, 'file')}
                     onRename={(newName) => onRename(file, 'file', newName)}
                     onPreview={() => onPreview(file)}

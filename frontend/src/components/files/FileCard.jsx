@@ -101,6 +101,7 @@ export default function FileCard({
     };
 
     const handleCardClick = () => {
+        // Card click: Navigate or preview
         if (type === 'folder') {
             onNavigate();
         } else if (type === 'file' && canPreviewFile(item.mimeType, item.name)) {
@@ -112,7 +113,9 @@ export default function FileCard({
 
     const handleCheckboxClick = (e) => {
         e.stopPropagation();
-        onSelect();
+        if (onSelect) {
+            onSelect(e);
+        }
     };
 
     // Get icon
@@ -139,7 +142,7 @@ export default function FileCard({
                 },
             }}
         >
-            <CardActionArea onClick={handleCardClick} onDoubleClick={handleCardClick}>
+            <CardActionArea onClick={handleCardClick}>
                 <CardContent>
                     {/* Checkbox */}
                     <Box

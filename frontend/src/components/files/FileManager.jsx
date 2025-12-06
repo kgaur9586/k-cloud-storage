@@ -9,7 +9,11 @@ import FolderTree from './FolderTree';
 import FileList from './FileList';
 import FileUploadZone from './FileUploadZone';
 import FilePreviewModal from './FilePreviewModal';
-import ShareFileDialog from './ShareFileDialog';
+import ShareDialog from './ShareDialog';
+import SelectionToolbar from './SelectionToolbar';
+import MoveDialog from './MoveDialog';
+import CopyDialog from './CopyDialog';
+import useSelection from '../../hooks/useSelection';
 
 /**
  * FileManager Component
@@ -21,7 +25,6 @@ export default function FileManager() {
     const [files, setFiles] = useState([]);
     const [folders, setFolders] = useState([]);
     const [folderTree, setFolderTree] = useState([]);
-    const [selectedItems, setSelectedItems] = useState([]);
     const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
     const [sortBy, setSortBy] = useState('name');
     const [sortOrder, setSortOrder] = useState('asc');
@@ -32,7 +35,13 @@ export default function FileManager() {
     const [searchQuery, setSearchQuery] = useState('');
     const [shareDialogOpen, setShareDialogOpen] = useState(false);
     const [fileToShare, setFileToShare] = useState(null);
+    const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+    const [copyDialogOpen, setCopyDialogOpen] = useState(false);
     const initialLoadDone = useRef(false);
+
+    // Multi-select functionality
+    const allItems = [...folders.map(f => ({ ...f, type: 'folder' })), ...files.map(f => ({ ...f, type: 'file' }))];
+    const selection = useSelection(allItems);
 
     // Load initial data - runs only once on mount
     useEffect(() => {
@@ -175,7 +184,7 @@ export default function FileManager() {
      */
     const handleNavigate = (folderId) => {
         setCurrentFolderId(folderId);
-        setSelectedItems([]);
+        selection.clearSelection();
         setSearchQuery(''); // Clear search on navigation
     };
 
@@ -195,31 +204,18 @@ export default function FileManager() {
     };
 
     /**
-     * Handle item selection
+     * Handle item selection (only from checkbox)
+     * This is now handled by the selection hook in FileList
      */
-    const handleSelect = (item, type) => {
-        const itemId = `${type}-${item.id}`;
-        setSelectedItems(prev => {
-            if (prev.includes(itemId)) {
-                return prev.filter(id => id !== itemId);
-            } else {
-                return [...prev, itemId];
-            }
-        });
-    };
 
     /**
      * Handle select all
      */
     const handleSelectAll = () => {
-        if (selectedItems.length === files.length + folders.length) {
-            setSelectedItems([]);
+        if (selection.selectedCount === files.length + folders.length) {
+            selection.clearSelection();
         } else {
-            const allItems = [
-                ...folders.map(f => `folder-${f.id}`),
-                ...files.map(f => `file-${f.id}`)
-            ];
-            setSelectedItems(allItems);
+            selection.selectAll();
         }
     };
 
@@ -247,27 +243,23 @@ export default function FileManager() {
      * Handle bulk deletion
      */
     const handleBulkDelete = async () => {
-        if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} items?`)) {
+        if (!window.confirm(`Are you sure you want to delete ${selection.selectedCount} items?`)) {
             return;
         }
 
         try {
-            const deletePromises = selectedItems.map(itemId => {
-                // itemId format is "type-uuid", e.g. "folder-123e4567-e89b-12d3-a456-426614174000"
-                const firstHyphenIndex = itemId.indexOf('-');
-                const type = itemId.substring(0, firstHyphenIndex);
-                const id = itemId.substring(firstHyphenIndex + 1);
-
-                if (type === 'file') {
-                    return fileService.deleteFile(id);
+            const selectedItems = selection.getSelectedItems();
+            const deletePromises = selectedItems.map(item => {
+                if (item.type === 'file') {
+                    return fileService.deleteFile(item.id);
                 } else {
-                    return folderService.deleteFolder(id);
+                    return folderService.deleteFolder(item.id);
                 }
             });
 
             await Promise.all(deletePromises);
             toast.success('Selected items deleted successfully');
-            setSelectedItems([]);
+            selection.clearSelection();
             await reloadCurrentData();
             await reloadFolderTree();
         } catch (error) {
@@ -308,12 +300,14 @@ export default function FileManager() {
     };
 
     /**
-     * Handle file share
+     * Handle file sharing
      */
     const handleShare = (file) => {
         setFileToShare(file);
         setShareDialogOpen(true);
     };
+
+
 
     const handleCloseShare = () => {
         setShareDialogOpen(false);
@@ -347,7 +341,7 @@ export default function FileManager() {
                         setSortOrder(order);
                     }}
                     onCreateFolder={handleCreateFolder}
-                    selectedCount={selectedItems.length}
+                    selectedCount={selection.selectedCount}
                     onSelectAll={handleSelectAll}
                     onSearch={handleSearch}
                     onBulkDelete={handleBulkDelete}
@@ -400,8 +394,11 @@ export default function FileManager() {
                                     files={files}
                                     folders={folders}
                                     viewMode={viewMode}
-                                    selectedItems={selectedItems}
-                                    onSelect={handleSelect}
+                                    selectedItems={selection.selectedIds}
+                                    onSelect={(item, type, index, event) => {
+                                        const itemIndex = allItems.findIndex(i => i.id === item.id);
+                                        selection.toggleSelection(item.id, itemIndex, event);
+                                    }}
                                     onNavigate={handleNavigate}
                                     onDelete={handleDelete}
                                     onRename={handleRename}
@@ -421,12 +418,78 @@ export default function FileManager() {
                 onClose={handleClosePreview}
             />
 
+
             {/* Share Dialog */}
-            <ShareFileDialog
+            {/* Share Dialog */}
+            <ShareDialog
                 file={fileToShare}
                 open={shareDialogOpen}
-                onClose={handleCloseShare}
-                onUpdate={handleShareUpdate}
+                onClose={() => {
+                    setShareDialogOpen(false);
+                    setFileToShare(null);
+                }}
+            />
+
+            {/* Selection Toolbar */}
+            <SelectionToolbar
+                selectedCount={selection.selectedCount}
+                onClear={selection.clearSelection}
+                onMove={() => setMoveDialogOpen(true)}
+                onCopy={() => setCopyDialogOpen(true)}
+                onDelete={() => {
+                    if (window.confirm(`Delete ${selection.selectedCount} item(s)?`)) {
+                        const fileIds = selection.getSelectedItems().filter(i => i.type === 'file').map(i => i.id);
+                        fileService.batchDeleteFiles(fileIds).then(() => {
+                            toast.success('Files deleted');
+                            selection.clearSelection();
+                            reloadCurrentData();
+                        });
+                    }
+                }}
+                onDownload={async () => {
+                    const files = selection.getSelectedItems().filter(i => i.type === 'file');
+                    for (const file of files) {
+                        const { blob, filename } = await fileService.downloadFile(file.id);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                }}
+            />
+
+            {/* Move Dialog */}
+            <MoveDialog
+                open={moveDialogOpen}
+                onClose={() => setMoveDialogOpen(false)}
+                onMove={async (targetFolderId) => {
+                    const fileIds = selection.getSelectedItems().filter(i => i.type === 'file').map(i => i.id);
+                    const result = await fileService.batchMoveFiles(fileIds, targetFolderId);
+                    toast.success(`${result.successCount} file(s) moved`);
+                    selection.clearSelection();
+                    setMoveDialogOpen(false);
+                    reloadCurrentData();
+                }}
+                selectedItems={selection.getSelectedItems()}
+                currentFolderId={currentFolderId}
+            />
+
+            {/* Copy Dialog */}
+            <CopyDialog
+                open={copyDialogOpen}
+                onClose={() => setCopyDialogOpen(false)}
+                onCopy={async (targetFolderId, newName) => {
+                    const fileIds = selection.getSelectedItems().filter(i => i.type === 'file').map(i => i.id);
+                    const result = await fileService.batchCopyFiles(fileIds, targetFolderId);
+                    toast.success(`${result.successCount} file(s) copied`);
+                    selection.clearSelection();
+                    setCopyDialogOpen(false);
+                    reloadCurrentData();
+                }}
+                selectedItems={selection.getSelectedItems()}
+                currentFolderId={currentFolderId}
             />
         </Container>
     );

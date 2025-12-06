@@ -188,6 +188,59 @@ export const restoreVersion = async (fileId, versionId) => {
     return response.data;
 };
 
+/**
+ * Copy a file to a different folder
+ * @param {string} fileId - File ID
+ * @param {string} targetFolderId - Target folder ID (null for root)
+ * @param {string} newName - Optional new name for the copy
+ * @returns {Promise} New file metadata
+ */
+export const copyFile = async (fileId, targetFolderId, newName = null) => {
+    const response = await api.post(`/files/${fileId}/copy`, {
+        targetFolderId: targetFolderId || null,
+        newName,
+    });
+    return response.data;
+};
+
+/**
+ * Batch delete files
+ * @param {string[]} fileIds - Array of file IDs
+ * @returns {Promise} Batch operation results
+ */
+export const batchDeleteFiles = async (fileIds) => {
+    const response = await api.post('/files/batch/delete', { fileIds });
+    return response.data;
+};
+
+/**
+ * Batch move files
+ * @param {string[]} fileIds - Array of file IDs
+ * @param {string} targetFolderId - Target folder ID (null for root)
+ * @returns {Promise} Batch operation results
+ */
+export const batchMoveFiles = async (fileIds, targetFolderId) => {
+    const response = await api.post('/files/batch/move', {
+        fileIds,
+        targetFolderId: targetFolderId || null,
+    });
+    return response.data;
+};
+
+/**
+ * Batch copy files
+ * @param {string[]} fileIds - Array of file IDs
+ * @param {string} targetFolderId - Target folder ID (null for root)
+ * @returns {Promise} Batch operation results
+ */
+export const batchCopyFiles = async (fileIds, targetFolderId) => {
+    const response = await api.post('/files/batch/copy', {
+        fileIds,
+        targetFolderId: targetFolderId || null,
+    });
+    return response.data;
+};
+
 const fileService = {
     uploadFiles,
     listFiles,
@@ -195,7 +248,11 @@ const fileService = {
     downloadFile,
     renameFile,
     moveFile,
+    copyFile,
     deleteFile,
+    batchDeleteFiles,
+    batchMoveFiles,
+    batchCopyFiles,
     getFileStats,
     findDuplicates,
     toggleFileVisibility,

@@ -586,6 +586,241 @@ class FileService {
 
     return file;
   }
+
+  /**
+   * Copy file to a different folder
+   */
+  async copyFile(
+    fileId: string,
+    targetFolderId: string | null,
+    userId: string,
+    newName?: string
+  ): Promise<File> {
+    const sourceFile = await this.getFileById(fileId, userId);
+
+    if (!sourceFile) {
+      throw new Error('File not found');
+    }
+
+    // Validate target folder
+    if (targetFolderId) {
+      const targetFolder = await Folder.findOne({
+        where: { id: targetFolderId, userId, isDeleted: false },
+      });
+
+      if (!targetFolder) {
+        throw new Error('Target folder not found');
+      }
+    }
+
+    // Generate name for copy
+    const copyName = newName || this.generateCopyName(sourceFile.name);
+
+    // Check for name conflict
+    const existing = await File.findOne({
+      where: {
+        userId,
+        folderId: targetFolderId,
+        name: copyName,
+        isDeleted: false,
+      },
+    });
+
+    if (existing) {
+      throw new Error('File with this name already exists in the target folder');
+    }
+
+    // Check storage quota
+    const user = await User.findByPk(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    if (!user.hasAvailableStorage(Number(sourceFile.size))) {
+      throw new Error('Storage quota exceeded');
+    }
+
+    // Copy physical file
+    const sourceBuffer = await storageService.readFile(sourceFile.path);
+    const newPath = await storageService.saveFile(userId, sourceBuffer, copyName);
+
+    // Create new file record
+    const newFile = await File.create({
+      userId,
+      folderId: targetFolderId,
+      name: copyName,
+      originalName: copyName,
+      mimeType: sourceFile.mimeType,
+      size: sourceFile.size,
+      path: newPath,
+      hash: sourceFile.hash,
+      metadata: sourceFile.metadata,
+    });
+
+    // Update user storage
+    user.storageUsed = Number(user.storageUsed) + Number(sourceFile.size);
+    await user.save();
+
+    // Queue thumbnail generation if needed
+    if (sourceFile.mimeType.startsWith('image/') || sourceFile.mimeType.startsWith('video/')) {
+      await queueService.addThumbnailJob({
+        fileId: newFile.id,
+        userId,
+        path: newPath,
+        mimeType: sourceFile.mimeType,
+        originalName: copyName,
+      });
+    }
+
+    await logger.info('File copied', {
+      userId,
+      sourceFileId: fileId,
+      newFileId: newFile.id,
+      targetFolderId,
+    });
+
+    return newFile;
+  }
+
+  /**
+   * Batch delete files
+   */
+  async batchDelete(
+    fileIds: string[],
+    userId: string
+  ): Promise<{
+    succeeded: string[];
+    failed: Array<{ id: string; error: string }>;
+    successCount: number;
+    failureCount: number;
+    total: number;
+  }> {
+    const succeeded: string[] = [];
+    const failed: Array<{ id: string; error: string }> = [];
+
+    for (const fileId of fileIds) {
+      try {
+        await this.deleteFile(fileId, userId);
+        succeeded.push(fileId);
+      } catch (error: any) {
+        failed.push({ id: fileId, error: error.message });
+      }
+    }
+
+    await logger.info('Batch delete completed', {
+      userId,
+      total: fileIds.length,
+      succeeded: succeeded.length,
+      failed: failed.length,
+    });
+
+    return {
+      succeeded,
+      failed,
+      successCount: succeeded.length,
+      failureCount: failed.length,
+      total: fileIds.length,
+    };
+  }
+
+  /**
+   * Batch move files
+   */
+  async batchMove(
+    fileIds: string[],
+    targetFolderId: string | null,
+    userId: string
+  ): Promise<{
+    succeeded: string[];
+    failed: Array<{ id: string; error: string }>;
+    successCount: number;
+    failureCount: number;
+    total: number;
+  }> {
+    const succeeded: string[] = [];
+    const failed: Array<{ id: string; error: string }> = [];
+
+    for (const fileId of fileIds) {
+      try {
+        await this.moveFile(fileId, targetFolderId, userId);
+        succeeded.push(fileId);
+      } catch (error: any) {
+        failed.push({ id: fileId, error: error.message });
+      }
+    }
+
+    await logger.info('Batch move completed', {
+      userId,
+      targetFolderId,
+      total: fileIds.length,
+      succeeded: succeeded.length,
+      failed: failed.length,
+    });
+
+    return {
+      succeeded,
+      failed,
+      successCount: succeeded.length,
+      failureCount: failed.length,
+      total: fileIds.length,
+    };
+  }
+
+  /**
+   * Batch copy files
+   */
+  async batchCopy(
+    fileIds: string[],
+    targetFolderId: string | null,
+    userId: string
+  ): Promise<{
+    succeeded: string[];
+    failed: Array<{ id: string; error: string }>;
+    successCount: number;
+    failureCount: number;
+    total: number;
+  }> {
+    const succeeded: string[] = [];
+    const failed: Array<{ id: string; error: string }> = [];
+
+    for (const fileId of fileIds) {
+      try {
+        await this.copyFile(fileId, targetFolderId, userId);
+        succeeded.push(fileId);
+      } catch (error: any) {
+        failed.push({ id: fileId, error: error.message });
+      }
+    }
+
+    await logger.info('Batch copy completed', {
+      userId,
+      targetFolderId,
+      total: fileIds.length,
+      succeeded: succeeded.length,
+      failed: failed.length,
+    });
+
+    return {
+      succeeded,
+      failed,
+      successCount: succeeded.length,
+      failureCount: failed.length,
+      total: fileIds.length,
+    };
+  }
+
+  /**
+   * Generate a copy name with " (copy)" suffix
+   */
+  private generateCopyName(originalName: string): string {
+    const lastDotIndex = originalName.lastIndexOf('.');
+    if (lastDotIndex === -1) {
+      return `${originalName} (copy)`;
+    }
+    const nameWithoutExt = originalName.substring(0, lastDotIndex);
+    const extension = originalName.substring(lastDotIndex);
+    return `${nameWithoutExt} (copy)${extension}`;
+  }
 }
 
 export default new FileService();

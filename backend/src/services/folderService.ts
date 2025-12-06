@@ -18,7 +18,7 @@ class FolderService {
       const parent = await Folder.findOne({
         where: { id: parentId, userId, isDeleted: false },
       });
-      
+
       if (!parent) {
         throw new Error('Parent folder not found');
       }
@@ -97,7 +97,7 @@ class FolderService {
    */
   async renameFolder(folderId: string, newName: string, userId: string): Promise<Folder> {
     const folder = await this.getFolderById(folderId, userId);
-    
+
     if (!folder) {
       throw new Error('Folder not found');
     }
@@ -136,7 +136,7 @@ class FolderService {
    */
   async moveFolder(folderId: string, targetParentId: string | null, userId: string): Promise<Folder> {
     const folder = await this.getFolderById(folderId, userId);
-    
+
     if (!folder) {
       throw new Error('Folder not found');
     }
@@ -144,7 +144,7 @@ class FolderService {
     // Prevent moving folder into itself or its descendants
     if (targetParentId) {
       const targetParent = await this.getFolderById(targetParentId, userId);
-      
+
       if (!targetParent) {
         throw new Error('Target parent folder not found');
       }
@@ -188,7 +188,7 @@ class FolderService {
    */
   async deleteFolder(folderId: string, userId: string): Promise<void> {
     const folder = await this.getFolderById(folderId, userId);
-    
+
     if (!folder) {
       throw new Error('Folder not found');
     }
@@ -242,7 +242,7 @@ class FolderService {
    */
   async calculateFolderSize(folderId: string, userId: string): Promise<number> {
     const folder = await this.getFolderById(folderId, userId);
-    
+
     if (!folder) {
       throw new Error('Folder not found');
     }
@@ -269,6 +269,111 @@ class FolderService {
     });
 
     return result || 0;
+  }
+
+  /**
+   * Copy folder to a new location
+   */
+  async copyFolder(
+    folderId: string,
+    targetParentId: string | null,
+    userId: string,
+    newName?: string
+  ): Promise<Folder> {
+    const sourceFolder = await this.getFolderById(folderId, userId);
+
+    if (!sourceFolder) {
+      throw new Error('Folder not found');
+    }
+
+    // Validate target parent
+    if (targetParentId) {
+      const targetParent = await this.getFolderById(targetParentId, userId);
+
+      if (!targetParent) {
+        throw new Error('Target parent folder not found');
+      }
+    }
+
+    // Generate name for copy
+    const copyName = newName || this.generateCopyName(sourceFolder.name);
+
+    // Generate new path
+    const newPath = await this.generateFolderPath(userId, copyName, targetParentId || undefined);
+
+    // Check for conflicts
+    const existing = await Folder.findOne({
+      where: {
+        userId,
+        path: newPath,
+        isDeleted: false,
+      },
+    });
+
+    if (existing) {
+      throw new Error('Folder with this name already exists in the target location');
+    }
+
+    // Create new folder
+    const newFolder = await Folder.create({
+      userId,
+      parentId: targetParentId,
+      name: copyName,
+      path: newPath,
+    });
+
+    // Get all subfolders and files
+    const subfolders = await Folder.findAll({
+      where: {
+        userId,
+        path: { [Op.like]: `${sourceFolder.path}/%` },
+        isDeleted: false,
+      },
+      order: [['path', 'ASC']],
+    });
+
+    const files = await File.findAll({
+      where: {
+        userId,
+        folderId: folderId,
+        isDeleted: false,
+      },
+    });
+
+    // Copy all subfolders
+    for (const subfolder of subfolders) {
+      const relativePath = subfolder.path.replace(sourceFolder.path, '');
+      const newSubfolderPath = `${newPath}${relativePath}`;
+
+      await Folder.create({
+        userId,
+        parentId: newFolder.id,
+        name: subfolder.name,
+        path: newSubfolderPath,
+      });
+    }
+
+    // Copy all files (using fileService)
+    const fileService = (await import('./fileService.js')).default;
+    for (const file of files) {
+      await fileService.copyFile(file.id, newFolder.id, userId);
+    }
+
+    await logger.info('Folder copied', {
+      userId,
+      sourceFolderId: folderId,
+      newFolderId: newFolder.id,
+      targetParentId,
+    });
+
+    return newFolder;
+  }
+
+  /**
+   * Generate a copy name with " (copy)" suffix
+   */
+  private generateCopyName(originalName: string): string {
+    return `${originalName} (copy)`;
   }
 
   /**
@@ -313,7 +418,7 @@ class FolderService {
    */
   private buildTree(folders: Folder[], parentId: string | null): any[] {
     const children = folders.filter(f => f.parentId === parentId);
-    
+
     return children.map(folder => ({
       id: folder.id,
       name: folder.name,

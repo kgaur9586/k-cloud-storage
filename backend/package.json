@@ -23,6 +23,7 @@
   "license": "MIT",
   "devDependencies": {
     "@babel/preset-env": "^7.28.5",
+    "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/dotenv": "^6.1.1",
@@ -55,6 +56,7 @@
     "@k-cloud/shared": "workspace:*",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/ioredis": "^5.0.0",
+    "bcryptjs": "^2.4.3",
     "bull": "^4.16.5",
     "bullmq": "^5.65.1",
     "cors": "^2.8.5",
@@ -74,6 +76,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.18.3",
+    "uuid": "^9.0.1",
     "zod": "^3.22.4"
   }
 }

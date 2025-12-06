@@ -148,6 +148,86 @@ router.get('/duplicates', fileController.findDuplicates);
 
 /**
  * @swagger
+ * /api/files/batch/delete:
+ *   post:
+ *     summary: Batch delete files
+ *     tags: [Files]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fileIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *     responses:
+ *       200:
+ *         description: Batch delete results
+ */
+router.post('/batch/delete', fileController.batchDeleteFiles);
+
+/**
+ * @swagger
+ * /api/files/batch/move:
+ *   post:
+ *     summary: Batch move files
+ *     tags: [Files]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fileIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *               targetFolderId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Batch move results
+ */
+router.post('/batch/move', fileController.batchMoveFiles);
+
+/**
+ * @swagger
+ * /api/files/batch/copy:
+ *   post:
+ *     summary: Batch copy files
+ *     tags: [Files]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fileIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *               targetFolderId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *     responses:
+ *       201:
+ *         description: Batch copy results
+ */
+router.post('/batch/copy', fileController.batchCopyFiles);
+
+/**
+ * @swagger
  * /api/files/{id}:
  *   get:
  *     summary: Get file details
@@ -360,5 +440,42 @@ router.put('/:id/visibility', fileController.toggleFileVisibility);
  *                   type: string
  */
 router.get('/:id/share-link', fileController.getShareLink);
+
+/**
+ * @swagger
+ * /api/files/{id}/copy:
+ *   post:
+ *     summary: Copy file
+ *     tags: [Files]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               targetFolderId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *               newName:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       201:
+ *         description: File copied
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/File'
+ */
+router.post('/:id/copy', fileController.copyFile);
 
 export default router;

@@ -136,6 +136,14 @@ export const downloadFile = async (req: Request, res: Response) => {
     const userId = req.dbUser!.id;
     const { id } = req.params;
 
+    // Check if user has download permission
+    const shareService = (await import('../services/shareService.js')).default;
+    const hasDownloadPermission = await shareService.canDownload(id, userId);
+
+    if (!hasDownloadPermission) {
+      return ApiResponse.error(403, 'View-only access - download not permitted').send(res);
+    }
+
     const { file, buffer } = await fileService.downloadFile(id, userId);
 
     res.setHeader('Content-Type', file.mimeType);
@@ -172,8 +180,8 @@ export const renameFile = async (req: Request, res: Response) => {
       FileResponseSchema
     ).send(res);
   } catch (error: any) {
-    const statusCode = error.message.includes('not found') ? 404 : 
-                       error.message.includes('already exists') ? 409 : 500;
+    const statusCode = error.message.includes('not found') ? 404 :
+      error.message.includes('already exists') ? 409 : 500;
     return ApiResponse.error(statusCode, error.message).send(res);
   }
 };
@@ -198,8 +206,8 @@ export const moveFile = async (req: Request, res: Response) => {
       FileResponseSchema
     ).send(res);
   } catch (error: any) {
-    const statusCode = error.message.includes('not found') ? 404 : 
-                       error.message.includes('already exists') ? 409 : 500;
+    const statusCode = error.message.includes('not found') ? 404 :
+      error.message.includes('already exists') ? 409 : 500;
     return ApiResponse.error(statusCode, error.message).send(res);
   }
 };
@@ -342,6 +350,104 @@ export const getFileThumbnail = async (req: Request, res: Response) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
 
     return res.send(thumbnailBuffer);
+  } catch (error: any) {
+    return ApiResponse.error(500, error.message).send(res);
+  }
+};
+
+/**
+ * Copy file to a different folder
+ * POST /api/files/:id/copy
+ */
+export const copyFile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.dbUser!.id;
+    const { id } = req.params;
+    const { targetFolderId, newName } = req.body;
+
+    const file = await fileService.copyFile(id, targetFolderId || null, userId, newName);
+
+    return ApiResponse.success(
+      { file: file.toJSON() },
+      'File copied successfully',
+      201
+    ).send(res);
+  } catch (error: any) {
+    const statusCode = error.message.includes('not found') ? 404 :
+      error.message.includes('already exists') ? 409 :
+        error.message.includes('quota') ? 413 : 500;
+    return ApiResponse.error(statusCode, error.message).send(res);
+  }
+};
+
+/**
+ * Batch delete files
+ * POST /api/files/batch/delete
+ */
+export const batchDeleteFiles = async (req: Request, res: Response) => {
+  try {
+    const userId = req.dbUser!.id;
+    const { fileIds } = req.body;
+
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return ApiResponse.error(400, 'fileIds must be a non-empty array').send(res);
+    }
+
+    const results = await fileService.batchDelete(fileIds, userId);
+
+    return ApiResponse.success(
+      results,
+      `${results.successCount} file(s) deleted successfully`
+    ).send(res);
+  } catch (error: any) {
+    return ApiResponse.error(500, error.message).send(res);
+  }
+};
+
+/**
+ * Batch move files
+ * POST /api/files/batch/move
+ */
+export const batchMoveFiles = async (req: Request, res: Response) => {
+  try {
+    const userId = req.dbUser!.id;
+    const { fileIds, targetFolderId } = req.body;
+
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return ApiResponse.error(400, 'fileIds must be a non-empty array').send(res);
+    }
+
+    const results = await fileService.batchMove(fileIds, targetFolderId || null, userId);
+
+    return ApiResponse.success(
+      results,
+      `${results.successCount} file(s) moved successfully`
+    ).send(res);
+  } catch (error: any) {
+    return ApiResponse.error(500, error.message).send(res);
+  }
+};
+
+/**
+ * Batch copy files
+ * POST /api/files/batch/copy
+ */
+export const batchCopyFiles = async (req: Request, res: Response) => {
+  try {
+    const userId = req.dbUser!.id;
+    const { fileIds, targetFolderId } = req.body;
+
+    if (!Array.isArray(fileIds) || fileIds.length === 0) {
+      return ApiResponse.error(400, 'fileIds must be a non-empty array').send(res);
+    }
+
+    const results = await fileService.batchCopy(fileIds, targetFolderId || null, userId);
+
+    return ApiResponse.success(
+      results,
+      `${results.successCount} file(s) copied successfully`,
+      201
+    ).send(res);
   } catch (error: any) {
     return ApiResponse.error(500, error.message).send(res);
   }
