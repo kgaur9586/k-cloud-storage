@@ -13,6 +13,7 @@ import trashRoutes from './src/routes/trash.routes.js';
 import versionRoutes from './src/routes/version.routes.js';
 import queueRoutes from './src/routes/queue.routes.js';
 import shareRoutes from './src/routes/share.routes.js';
+import adminRoutes from './src/routes/admin.routes.js';
 import { errorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
 import { apiLimiter } from './src/middleware/rateLimiter.js';
 import { setupSwagger } from './src/config/swagger.js';
@@ -101,6 +102,7 @@ app.use('/api/trash', trashRoutes);
 app.use('/api/files', versionRoutes); // Mount version routes also under /api/files to match the path structure
 app.use('/api/queue', queueRoutes); // Queue monitoring routes
 app.use('/api', shareRoutes); // Share routes
+app.use('/api/admin', adminRoutes); // Admin routes
 
 // 404 handler
 app.use(notFoundHandler);

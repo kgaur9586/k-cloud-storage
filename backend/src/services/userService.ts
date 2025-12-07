@@ -15,7 +15,7 @@ export class UserService {
   /**
    * Create a new user
    */
-  static async createUser(logtoUserId: string, email: string, data: CreateUserRequest, picture?: string | null) {
+  static async createUser(logtoUserId: string, email: string, data: CreateUserRequest, picture?: string | null, role: string = 'user') {
     // Check if user already exists
     const existingUser = await this.findByLogtoId(logtoUserId);
     if (existingUser) {
@@ -25,14 +25,14 @@ export class UserService {
     const newUser = await User.create({
       logtoUserId,
       email,
-      name: data.name as string ,
+      name: data.name as string,
       phone: data.phone as string,
       age: data.age as number,
       gender: data.gender as any, // Temporary cast until enum fix
       picture: picture as string,
       storageQuota: 10737418240, // 10GB default
       storageUsed: 0,
-      role: 'user',
+      role: role,
     });
 
     await logger.info('User created successfully', {
@@ -54,7 +54,7 @@ export class UserService {
     }
 
     // Update fields if provided
-    if (data.name !== undefined) user.name = data.name as string  ;
+    if (data.name !== undefined) user.name = data.name as string;
     if (data.phone !== undefined) user.phone = data.phone as string;
     if (data.age !== undefined) user.age = data.age as number;
     if (data.gender !== undefined) user.gender = data.gender as any;
@@ -79,8 +79,8 @@ export class UserService {
       quota,
       used,
       available: quota - used,
-      usagePercentage: quota > 0 
-        ? (used / quota) * 100 
+      usagePercentage: quota > 0
+        ? (used / quota) * 100
         : 0,
     };
   }

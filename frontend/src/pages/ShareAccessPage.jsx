@@ -9,16 +9,12 @@ import {
     Button,
     CircularProgress,
     Alert,
-    Card,
-    CardContent,
-    CardMedia,
     Divider
 } from '@mui/material';
 import {
     Lock as LockIcon,
     Download as DownloadIcon,
     Description as FileIcon,
-    Folder as FolderIcon,
     Error as ErrorIcon
 } from '@mui/icons-material';
 import shareService from '../services/shareService';
@@ -33,6 +29,7 @@ export default function ShareAccessPage() {
     const [data, setData] = useState(null);
 
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [previewError, setPreviewError] = useState(false);
 
     const fetchShare = async (pwd) => {
         try {
@@ -50,7 +47,7 @@ export default function ShareAccessPage() {
                     setPreviewUrl(url);
                 } catch (err) {
                     console.error('Failed to load preview:', err);
-                    // Don't block the page if preview fails
+                    setPreviewError(true);
                 }
             }
         } catch (err) {
@@ -223,6 +220,16 @@ export default function ShareAccessPage() {
                                         </Typography>
                                     </Box>
                                 )
+                            ) : previewError ? (
+                                <Box textAlign="center" p={4}>
+                                    <ErrorIcon sx={{ fontSize: 60, color: 'error.main', mb: 2 }} />
+                                    <Typography variant="h6" color="error" gutterBottom>
+                                        Failed to load preview
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        The file could not be loaded for preview.
+                                    </Typography>
+                                </Box>
                             ) : (
                                 <Box textAlign="center" p={4}>
                                     <CircularProgress size={40} sx={{ mb: 2 }} />

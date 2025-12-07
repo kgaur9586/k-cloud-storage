@@ -4,6 +4,7 @@ import File from './File.js';
 import Folder from './Folder.js';
 import FileVersion from './FileVersion.js';
 import SharedLink from './SharedLink.js';
+import AuditLog from './AuditLog.js';
 
 /**
  * Models registry
@@ -15,6 +16,7 @@ const models = {
     Folder,
     FileVersion,
     SharedLink,
+    AuditLog,
 };
 
 /**
@@ -46,6 +48,10 @@ export const setupAssociations = () => {
     SharedLink.belongsTo(User, { foreignKey: 'sharedWith', as: 'recipient' });
     SharedLink.belongsTo(File, { foreignKey: 'resourceId', constraints: false, as: 'file' });
     SharedLink.belongsTo(Folder, { foreignKey: 'resourceId', constraints: false, as: 'folder' });
+
+    // AuditLog associations
+    AuditLog.belongsTo(User, { foreignKey: 'adminId', as: 'admin' });
+    AuditLog.belongsTo(User, { foreignKey: 'targetUserId', as: 'targetUser' });
 };
 
 export { sequelize, models };

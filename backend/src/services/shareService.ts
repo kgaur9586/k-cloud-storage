@@ -294,7 +294,7 @@ class ShareService {
     /**
      * Download shared file content
      */
-    async downloadSharedFile(token: string, password?: string): Promise<{ buffer: Buffer, filename: string, mimeType: string }> {
+    async downloadSharedFile(token: string, password?: string, isDownload: boolean = false): Promise<{ buffer: Buffer, filename: string, mimeType: string }> {
         const shareLink = await SharedLink.findOne({
             where: { shareToken: token },
         });
@@ -308,6 +308,11 @@ class ShareService {
             if (!shareLink.isActive) throw new Error('Share link has been revoked');
             if (shareLink.isExpired()) throw new Error('Share link has expired');
             if (shareLink.isAccessLimitReached()) throw new Error('Share link access limit reached');
+        }
+
+        // Check download permission
+        if (isDownload && shareLink.permission === 'view') {
+            throw new Error('Download permission denied');
         }
 
         // Verify password if required

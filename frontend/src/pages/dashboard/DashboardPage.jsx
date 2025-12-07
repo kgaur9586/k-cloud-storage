@@ -6,6 +6,9 @@ import {
     Paper,
     Tabs,
     Tab,
+    Button,
+    Menu,
+    MenuItem,
 } from '@mui/material';
 import { UserProfile } from '../../components/auth/UserProfile';
 import { LogoutButton } from '../../components/auth/LogoutButton';
@@ -32,7 +35,11 @@ import SharedWithMe from '../../pages/SharedWithMe';
 import {
     Share as ShareIcon,
     People as PeopleIcon,
+    AdminPanelSettings as AdminPanelSettingsIcon,
 } from '@mui/icons-material';
+import AdminDashboard from '../admin/AdminDashboard';
+import AdminUsers from '../admin/AdminUsers';
+import AdminSystem from '../admin/AdminSystem';
 
 /**
  * Dashboard page
@@ -44,6 +51,7 @@ export function DashboardPage() {
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [partialUser, setPartialUser] = useState(null);
     const [currentTab, setCurrentTab] = useState('analytics');
+    const [adminMenuAnchor, setAdminMenuAnchor] = useState(null);
 
     const effectRan = useRef(false);
 
@@ -79,6 +87,19 @@ export function DashboardPage() {
         setCurrentTab(newValue);
     };
 
+    const handleAdminMenuOpen = (event) => {
+        setAdminMenuAnchor(event.currentTarget);
+    };
+
+    const handleAdminMenuClose = () => {
+        setAdminMenuAnchor(null);
+    };
+
+    const handleAdminNavigation = (tab) => {
+        setCurrentTab(tab);
+        handleAdminMenuClose();
+    };
+
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             {/* Header */}
@@ -91,6 +112,37 @@ export function DashboardPage() {
                                 K-Cloud Storage
                             </Typography>
                         </Box>
+
+                        <Box>
+                            {user?.role === 'admin' && (
+                                <>
+                                    <Button
+                                        variant="contained"
+                                        color="primary"
+                                        startIcon={<AdminPanelSettingsIcon />}
+                                        onClick={handleAdminMenuOpen}
+                                    >
+                                        Admin Panel
+                                    </Button>
+                                    <Menu
+                                        anchorEl={adminMenuAnchor}
+                                        open={Boolean(adminMenuAnchor)}
+                                        onClose={handleAdminMenuClose}
+                                    >
+                                        <MenuItem onClick={() => handleAdminNavigation('admin-dashboard')}>
+                                            <DashboardIcon sx={{ mr: 1 }} /> Dashboard
+                                        </MenuItem>
+                                        <MenuItem onClick={() => handleAdminNavigation('admin-users')}>
+                                            <PeopleIcon sx={{ mr: 1 }} /> Users
+                                        </MenuItem>
+                                        <MenuItem onClick={() => handleAdminNavigation('admin-settings')}>
+                                            <SettingsIcon sx={{ mr: 1 }} /> System
+                                        </MenuItem>
+                                    </Menu>
+                                </>
+                            )}
+                        </Box>
+
                         <Box display="flex" gap={2} alignItems="center">
                             {user && <Typography>{user.name || user.email}</Typography>}
                             <LogoutButton />
@@ -99,74 +151,70 @@ export function DashboardPage() {
 
                     {/* Navigation Tabs */}
                     <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
-                        <Tabs value={currentTab} onChange={handleTabChange}>
-                            <Tab
-                                icon={<InsertDriveFileIcon />}
-                                label="Files"
-                                value="files" // Added value prop
-                                iconPosition="start"
-                            />
-                            <Tab
-                                icon={<PhotoLibraryIcon />}
-                                label="Media"
-                                value="media"
-                                iconPosition="start"
-                            />
-                            <Tab
-                                icon={<ShareIcon />}
-                                label="My Shares"
-                                value="my-shares"
-                                iconPosition="start"
-                            />
-                            <Tab
-                                icon={<PeopleIcon />}
-                                label="Shared with Me"
-                                value="shared-with-me"
-                                iconPosition="start"
-                            />
-                            <Tab
-                                icon={<BarChartIcon />}
-                                label="Analytics"
-                                value="analytics" // Added value prop
-                                iconPosition="start"
-                            />
-                            <Tab
-                                icon={<DeleteIcon />}
-                                label="Trash"
-                                value="trash" // Added value prop
-                                iconPosition="start"
-                            />
+                        <Tabs
+                            value={currentTab}
+                            onChange={handleTabChange}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                        >
+                            <Tab icon={<BarChartIcon />} label="Analytics" value="analytics" iconPosition="start" />
+                            <Tab icon={<InsertDriveFileIcon />} label="Files" value="files" iconPosition="start" />
+                            <Tab icon={<PhotoLibraryIcon />} label="Media" value="media" iconPosition="start" />
+                            <Tab icon={<ShareIcon />} label="My Shares" value="my-shares" iconPosition="start" />
+                            <Tab icon={<PeopleIcon />} label="Shared With Me" value="shared-with-me" iconPosition="start" />
+                            <Tab icon={<DeleteIcon />} label="Trash" value="trash" iconPosition="start" />
+
+                            {/* Admin Tabs removed - moved to Admin Panel button menu */}
                         </Tabs>
                     </Box>
                 </Container>
             </Paper>
 
-            {/* Content */}
-            <ErrorBoundary>
-                <Box sx={{ display: currentTab === 'files' ? 'block' : 'none' }}>
-                    <FileManager />
-                </Box>
-                <Box sx={{ display: currentTab === 'media' ? 'block' : 'none' }}>
-                    <MediaGallery />
-                </Box>
-                <Box sx={{ display: currentTab === 'my-shares' ? 'block' : 'none' }}>
-                    <MyShares />
-                </Box>
-                <Box sx={{ display: currentTab === 'shared-with-me' ? 'block' : 'none' }}>
-                    <SharedWithMe />
-                </Box>
-                <Box sx={{ display: currentTab === 'analytics' ? 'block' : 'none' }}>
-                    <Container maxWidth="xl" sx={{ py: 3 }}>
-                        <StorageAnalytics />
-                    </Container>
-                </Box>
-                <Box sx={{ display: currentTab === 'trash' ? 'block' : 'none' }}>
-                    <Container maxWidth="xl" sx={{ py: 3 }}>
-                        <TrashBin isVisible={currentTab === 'trash'} />
-                    </Container>
-                </Box>
-            </ErrorBoundary>
+            {/* Content Area */}
+            <Box sx={{ flexGrow: 1 }}>
+                <ErrorBoundary>
+                    <Box sx={{ display: currentTab === 'files' ? 'block' : 'none' }}>
+                        <FileManager />
+                    </Box>
+                    <Box sx={{ display: currentTab === 'media' ? 'block' : 'none' }}>
+                        <MediaGallery />
+                    </Box>
+                    <Box sx={{ display: currentTab === 'my-shares' ? 'block' : 'none' }}>
+                        <MyShares />
+                    </Box>
+                    <Box sx={{ display: currentTab === 'shared-with-me' ? 'block' : 'none' }}>
+                        <SharedWithMe />
+                    </Box>
+                    <Box sx={{ display: currentTab === 'analytics' ? 'block' : 'none' }}>
+                        <Container maxWidth="xl" sx={{ py: 3 }}>
+                            <StorageAnalytics />
+                        </Container>
+                    </Box>
+                    <Box sx={{ display: currentTab === 'trash' ? 'block' : 'none' }}>
+                        <Container maxWidth="xl" sx={{ py: 3 }}>
+                            <TrashBin isVisible={currentTab === 'trash'} />
+                        </Container>
+                    </Box>
+
+                    {/* Admin Content */}
+                    {user?.role === 'admin' && (
+                        <>
+                            <Box sx={{ display: currentTab === 'admin-dashboard' ? 'block' : 'none' }}>
+                                <AdminDashboard />
+                            </Box>
+                            <Box sx={{ display: currentTab === 'admin-users' ? 'block' : 'none' }}>
+                                <AdminUsers />
+                            </Box>
+                            <Box sx={{ display: currentTab === 'admin-settings' ? 'block' : 'none' }}>
+                                <AdminSystem />
+                            </Box>
+                        </>
+                    )}
+                </ErrorBoundary>
+            </Box>
+
+
+
         </Box>
     );
 }
-

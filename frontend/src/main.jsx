@@ -12,7 +12,7 @@ const logtoConfig = {
   endpoint: import.meta.env.VITE_LOGTO_ENDPOINT,
   appId: import.meta.env.VITE_LOGTO_APP_ID,
   resources: [],
-  scopes: ['openid', 'profile', 'email', 'offline_access'],
+  scopes: ['openid', 'profile', 'email', 'offline_access', 'roles'],
 };
 
 /**

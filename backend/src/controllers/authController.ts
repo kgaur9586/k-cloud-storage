@@ -32,7 +32,7 @@ import {
 export const getUser = async (req: Request, res: Response) => {
   try {
     const claims = req.logtoUser;
-    
+
     if (!claims?.sub) {
       return ApiResponse.error(400, 'User claims not found').send(res);
     }
@@ -48,8 +48,8 @@ export const getUser = async (req: Request, res: Response) => {
       });
 
       return ApiResponse.error(
-        404, 
-        'User not found', 
+        404,
+        'User not found',
         {
           logtoUserId: claims.sub,
           email: claims.email,
@@ -109,7 +109,8 @@ export const createUser = async (req: Request, res: Response) => {
         claims.sub,
         email,
         requestData,
-        claims.picture
+        claims.picture,
+        (claims.roles && claims.roles.includes('admin')) ? 'admin' : 'user'
       );
 
       const responseData = {

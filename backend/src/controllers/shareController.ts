@@ -116,11 +116,15 @@ export const downloadSharedFile = async (req: Request, res: Response) => {
     try {
         const { token } = req.params;
         const { password } = req.body; // For POST request
+        const { download } = req.query;
 
-        const result = await shareService.downloadSharedFile(token, password);
+        const isDownload = download === 'true';
+
+        const result = await shareService.downloadSharedFile(token, password, isDownload);
 
         res.setHeader('Content-Type', result.mimeType);
-        res.setHeader('Content-Disposition', `inline; filename="${result.filename}"`);
+        const disposition = isDownload ? 'attachment' : 'inline';
+        res.setHeader('Content-Disposition', `${disposition}; filename="${result.filename}"`);
         res.send(result.buffer);
     } catch (error: any) {
         console.error('Download shared file error:', error);

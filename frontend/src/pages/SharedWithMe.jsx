@@ -24,6 +24,7 @@ import { toast } from 'react-toastify';
 import shareService from '../services/shareService';
 import fileService from '../services/fileService';
 import { formatDistanceToNow } from 'date-fns';
+import FilePreviewModal from '../components/files/FilePreviewModal';
 
 /**
  * SharedWithMe Page
@@ -32,6 +33,9 @@ import { formatDistanceToNow } from 'date-fns';
 export default function SharedWithMe() {
     const [shares, setShares] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [previewFile, setPreviewFile] = useState(null);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewPermission, setPreviewPermission] = useState(null);
 
     useEffect(() => {
         loadShares();
@@ -66,6 +70,18 @@ export default function SharedWithMe() {
             console.error('Download failed:', error);
             toast.error('Download failed');
         }
+    };
+
+    const handleView = (share) => {
+        setPreviewFile(share.file);
+        setPreviewPermission(share.permission);
+        setPreviewOpen(true);
+    };
+
+    const handleClosePreview = () => {
+        setPreviewOpen(false);
+        setPreviewFile(null);
+        setPreviewPermission(null);
     };
 
     const getPermissionColor = (permission) => {
@@ -176,21 +192,34 @@ export default function SharedWithMe() {
                                             size="small"
                                             variant="outlined"
                                             fullWidth
+                                            onClick={() => handleView(share)}
                                             disabled={share.isExpired || share.isAccessLimitReached}
                                         >
                                             View Only
                                         </Button>
                                     ) : (
-                                        <Button
-                                            startIcon={<DownloadIcon />}
-                                            size="small"
-                                            variant="contained"
-                                            fullWidth
-                                            onClick={() => handleDownload(share.file)}
-                                            disabled={share.isExpired || share.isAccessLimitReached}
-                                        >
-                                            Download
-                                        </Button>
+                                        <Box display="flex" gap={1} width="100%">
+                                            <Button
+                                                startIcon={<ViewIcon />}
+                                                size="small"
+                                                variant="outlined"
+                                                fullWidth
+                                                onClick={() => handleView(share)}
+                                                disabled={share.isExpired || share.isAccessLimitReached}
+                                            >
+                                                View
+                                            </Button>
+                                            <Button
+                                                startIcon={<DownloadIcon />}
+                                                size="small"
+                                                variant="contained"
+                                                fullWidth
+                                                onClick={() => handleDownload(share.file)}
+                                                disabled={share.isExpired || share.isAccessLimitReached}
+                                            >
+                                                Download
+                                            </Button>
+                                        </Box>
                                     )}
                                 </CardActions>
                             </Card>
@@ -198,6 +227,13 @@ export default function SharedWithMe() {
                     ))}
                 </Grid>
             )}
+
+            <FilePreviewModal
+                file={previewFile}
+                open={previewOpen}
+                onClose={handleClosePreview}
+                permission={previewPermission}
+            />
         </Container>
     );
 }

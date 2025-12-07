@@ -10,11 +10,11 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
   try {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Unauthorized',
-        message: 'No access token provided' 
+        message: 'No access token provided'
       });
     }
 
@@ -54,9 +54,9 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     });
 
     if (!userinfoResponse.ok) {
-       return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Unauthorized',
-        message: 'Invalid or expired token' 
+        message: 'Invalid or expired token'
       });
     }
 
@@ -66,6 +66,7 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
     // Extract user claims
     const sub = userInfo.sub;
     const email = userInfo.email || null;
+    const roles = userInfo.roles || [];
 
     if (!sub) {
       console.error('Missing required claims:', { sub, email, userInfo });
@@ -80,11 +81,13 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       email: email,
       name: userInfo.name || null,
       picture: userInfo.picture || null,
+      roles: roles,
     };
 
     await logger.debug('Token validated', {
       logtoUserId: sub,
       email: email,
+      roles: roles,
     });
 
     next();
@@ -93,9 +96,9 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
       error: error.message,
       stack: error.stack,
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      message: 'Failed to validate token' 
+      message: 'Failed to validate token'
     });
   }
 };
@@ -107,17 +110,17 @@ export const requireAuth = async (req: Request, res: Response, next: NextFunctio
 export const requireDbUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const claims = req.logtoUser;
-    
+
     if (!claims?.sub) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Unauthorized',
-        message: 'User claims not found' 
+        message: 'User claims not found'
       });
     }
 
     // Find user in our database
-    const user = await User.findOne({ 
-      where: { logtoUserId: claims.sub } 
+    const user = await User.findOne({
+      where: { logtoUserId: claims.sub }
     });
 
     if (!user) {
@@ -125,11 +128,35 @@ export const requireDbUser = async (req: Request, res: Response, next: NextFunct
         logtoUserId: claims.sub,
         email: claims.email,
       });
-      
+
       return res.status(401).json({
         error: 'User not found',
         message: 'Please complete your profile first',
       });
+    }
+
+    // Sync role from Logto if needed
+    const logtoRoles = claims.roles || [];
+    const isAdminInLogto = logtoRoles.includes('admin');
+    const currentRole = user.role;
+
+    if (isAdminInLogto && currentRole !== 'admin') {
+      await user.update({ role: 'admin' });
+      await logger.info('User promoted to admin via Logto role sync', { userId: user.id });
+    } else if (!isAdminInLogto && currentRole === 'admin') {
+      // Optional: Demote if not admin in Logto? 
+      // For safety, maybe we only promote automatically, or we enforce strict sync.
+      // Let's enforce strict sync as requested: "whenever we need admin we can set the role directly admin from logto console"
+      // This implies if we remove it in Logto, it should be removed here.
+
+      // Check if this is the last admin before demoting
+      const adminCount = await User.count({ where: { role: 'admin' } });
+      if (adminCount > 1) {
+        await user.update({ role: 'user' });
+        await logger.info('User demoted to user via Logto role sync', { userId: user.id });
+      } else {
+        await logger.warn('Skipping demotion of last admin via Logto sync', { userId: user.id });
+      }
     }
 
     // Attach database user to request
@@ -138,6 +165,7 @@ export const requireDbUser = async (req: Request, res: Response, next: NextFunct
     await logger.debug('Database user loaded', {
       userId: user.id,
       logtoUserId: user.logtoUserId,
+      role: user.role
     });
 
     next();
@@ -147,9 +175,9 @@ export const requireDbUser = async (req: Request, res: Response, next: NextFunct
       stack: error.stack,
       logtoUserId: req.logtoUser?.sub,
     });
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
-      message: 'Failed to load user' 
+      message: 'Failed to load user'
     });
   }
 };
@@ -159,9 +187,9 @@ export const requireDbUser = async (req: Request, res: Response, next: NextFunct
  */
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
   if (!req.dbUser || req.dbUser.role !== 'admin') {
-    return res.status(403).json({ 
+    return res.status(403).json({
       error: 'Forbidden',
-      message: 'Admin access required' 
+      message: 'Admin access required'
     });
   }
   next();
